@@ -17,18 +17,22 @@ def calculate_handoff_per_case(case: pd.DataFrame):
     case = case.sort_values(by='time:timestamp')
 
     # Handoff Identification
-    shift_occurred = case['Resource'] != case.shift(-1)['Resource']
+    resource_changed = case['Resource'] != case.shift(-1)['Resource']
+    activity_changed = case['Activity'] != case.shift(-1)['Activity']
     # because of NaN at the end of the shifted dataframe, we always have True
-    shift_occurred.iloc[-1] = False
-    case['handoff_occurred'] = shift_occurred
+    resource_changed.iloc[-1] = False
+    activity_changed.iloc[-1] = False
+    # both conditions must be satisfied
+    handoff_occurred = resource_changed & activity_changed
+    case['handoff_occurred'] = handoff_occurred
 
     # Frequency
     case.loc[case['handoff_occurred'] == True, 'handoff_frequency'] = 1
 
     # Duration
-    handoff_start = case.loc[shift_occurred, 'time:timestamp']
-    handoff_end = case.loc[shift_occurred.shift(1, fill_value=False), 'time:timestamp']
-    case.loc[shift_occurred, 'handoff_duration'] = handoff_end.values - handoff_start.values
+    handoff_start = case.loc[handoff_occurred, 'time:timestamp']
+    handoff_end = case.loc[handoff_occurred.shift(1, fill_value=False), 'time:timestamp']
+    case.loc[handoff_occurred, 'handoff_duration'] = handoff_end.values - handoff_start.values
 
     # Score
     case['handoff_score'] = case['handoff_duration'] * case['handoff_frequency']
