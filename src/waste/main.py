@@ -73,8 +73,11 @@ def calculate_handoff_per_case(case: pd.DataFrame) -> pd.DataFrame:
 
 
 @click.command()
-@click.option('--log_path', default=None, required=True)
-def main(log_path):
+@click.option('-l', '--log_path', default=None, required=True,
+              help='Path to an event log in XES-format.')
+@click.option('-o', '--output_dir', default='./', show_default=True,
+              help='Path to an output directory where statistics will be saved.')
+def main(log_path, output_dir):
     log = xes_importer.apply(log_path)
 
     # converting lifecycle log to interval log
@@ -109,8 +112,8 @@ def main(log_path):
             'frequency': frequency
         }), ignore_index=True)
 
-    result_path, _ = os.path.splitext(log_path)
-    result_path += '.xlsx'
+    file_name, _ = os.path.splitext(os.path.basename(log_path))
+    result_path = os.path.join(output_dir, file_name + '.xlsx')
     print(f'Saving results to {result_path}')
     statistics['duration_seconds'] = pd.to_numeric(statistics['duration'])
     statistics.to_excel(result_path)
