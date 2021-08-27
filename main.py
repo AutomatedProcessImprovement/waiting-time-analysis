@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
@@ -49,3 +47,23 @@ for (case_id, case) in event_log_by_case:
         continue
     print(case_id)
     calculate_handoff_per_case(case)
+
+# DONE: Sequential events
+#   - identical dates
+#   - parallel gateways (enabled timestamp)
+#   - modify event log to create a parallel or overlapping activity by time
+
+# DONE: Handoff types, can we discover resources, calendars (identify human, system, internal or external resource)?
+# We can't discover, but we can label it manually.
+
+# DONE: Separate dataframe for metrics
+
+# NOTE: Requirements:
+#   - only interval event logs, i.e., event logs where each event has a start timestamp and a completion timestamp
+
+# TODO: Ping-pong handoff is not identified yet
+
+# TODO: CTE, processing time / full time
+#   - Do we count only business hours? Yes. Using 24 hours for PurchasingExample.xes
+# TODO: Add total handoff frequency, frequency per case using unique pairs source+resource
+# TODO: Mark manually some events with resource_type label "system" to add handoff type identification
