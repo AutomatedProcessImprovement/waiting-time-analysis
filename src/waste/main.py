@@ -1,20 +1,11 @@
+import os.path
+
+import click
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
-
-event_log_path = 'data/PurchasingExampleModified.xes'
-log = xes_importer.apply(event_log_path)
-
-# Converting lifecycle log to interval log
-log_interval = interval_lifecycle.to_interval(log)
-
-# Conversion to pd.DataFrame format
-event_log_interval = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
-
-# Adjusting time slightly to avoid unnecessary concurrent events
-event_log_interval['start_timestamp'] = event_log_interval['start_timestamp'] + pd.Timedelta('1us')
 
 # handoff_id uniquely identifies a handoff
 handoff_id = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
@@ -81,30 +72,48 @@ def calculate_handoff_per_case(case: pd.DataFrame) -> pd.DataFrame:
     return handoff_per_case
 
 
-event_log_interval_by_case = event_log_interval.groupby(by='case:concept:name')
+@click.command()
+@click.option('--log_path', default=None, required=True)
+def main(log_path):
+    log = xes_importer.apply(log_path)
 
-print('Calculating handoff per case...')
-results_per_case = {}
-for (case_id, case) in event_log_interval_by_case:
-    result = calculate_handoff_per_case(case)
-    results_per_case[case_id] = result
+    # converting lifecycle log to interval log
+    log_interval = interval_lifecycle.to_interval(log)
+    # conversion to pd.DataFrame format
+    event_log_interval = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
+    # adjusting time slightly to avoid unnecessary concurrent events
+    event_log_interval['start_timestamp'] = event_log_interval['start_timestamp'] + pd.Timedelta('1us')
 
-statistics = pd.DataFrame(columns=handoff_id + ['frequency', 'duration'])
+    # grouping by case ID
+    event_log_interval_by_case = event_log_interval.groupby(by='case:concept:name')
 
-print('Post-processing final statistics...')
-results_per_case_grouped = pd.concat(results_per_case, ignore_index=True).groupby(by=handoff_id)
-for group in results_per_case_grouped:
-    pair, records = group
-    frequency = records['frequency'].sum()  # len(records) == frequency
-    duration = records['duration'].sum()
-    statistics = statistics.append(pd.Series({
-        'source_activity': pair[0],
-        'source_resource': pair[1],
-        'destination_activity': pair[2],
-        'destination_resource': pair[3],
-        'duration': duration,
-        'frequency': frequency
-    }), ignore_index=True)
+    print('Calculating handoff for each case...')
+    results_per_case = {}
+    for (case_id, case) in event_log_interval_by_case:
+        result = calculate_handoff_per_case(case)
+        results_per_case[case_id] = result
+
+    print('Post-processing final statistics...')
+    statistics = pd.DataFrame(columns=handoff_id + ['frequency', 'duration'])
+    results_per_case_grouped = pd.concat(results_per_case, ignore_index=True).groupby(by=handoff_id)
+    for group in results_per_case_grouped:
+        pair, records = group
+        frequency = records['frequency'].sum()  # len(records) == frequency
+        duration = records['duration'].sum()
+        statistics = statistics.append(pd.Series({
+            'source_activity': pair[0],
+            'source_resource': pair[1],
+            'destination_activity': pair[2],
+            'destination_resource': pair[3],
+            'duration': duration,
+            'frequency': frequency
+        }), ignore_index=True)
+
+    result_path, _ = os.path.splitext(log_path)
+    result_path += '.xlsx'
+    print(f'Saving results to {result_path}')
+    statistics['duration_seconds'] = pd.to_numeric(statistics['duration'])
+    statistics.to_excel(result_path)
 
 # DONE: Sequential events
 #   - identical dates
