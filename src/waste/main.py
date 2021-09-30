@@ -1,3 +1,4 @@
+import datetime
 import os.path
 
 import click
@@ -29,8 +30,13 @@ def calculate_handoff_per_case(case: pd.DataFrame) -> pd.DataFrame:
     concurrent_activities = concurrent_activities_get.apply(case, parameters=params)
     case_without_concurrent_activities = case.copy()
     for activities_pair in concurrent_activities:
+        # TODO: not all events in these activities do overlap, check for timestamp overlap
+        # TODO: not all events overlap between each other, there could be many sequential sets of events
+        #       that overlap only inside the set
         concurrent = case[(case['Activity'] == activities_pair[0]) | (case['Activity'] == activities_pair[1])]
-        case_without_concurrent_activities.drop(concurrent.index, inplace=True)
+        # TODO: event might be already dropped in previous loops
+        case_without_concurrent_activities.drop(concurrent.index, inplace=True, errors='ignore')
+        # TODO: there could be more than 2 events in 'concurrent'
         if concurrent.iloc[0]['time:timestamp'] >= concurrent.iloc[1]['time:timestamp']:
             case_without_concurrent_activities = case_without_concurrent_activities.append(concurrent.iloc[0])
         else:
@@ -49,7 +55,9 @@ def calculate_handoff_per_case(case: pd.DataFrame) -> pd.DataFrame:
     handoff.loc[:, 'source_resource'] = case_processed[handoff_occurred]['Resource']
     handoff.loc[:, 'destination_activity'] = case_processed[handoff_occurred].shift(-1)['Activity']
     handoff.loc[:, 'destination_resource'] = case_processed[handoff_occurred].shift(-1)['Resource']
-    handoff['duration'] = case_processed[handoff_occurred].shift(-1)['start_timestamp'] - \
+    # TODO: last value has NaN because of shift in Production.xes (why it doesn't so in PurchasingExample.xes?)
+    empty_timestamp = pd.to_datetime('2000-01-01 00:00 +0200', infer_datetime_format=True)
+    handoff['duration'] = case_processed[handoff_occurred].shift(-1, fill_value=empty_timestamp)['start_timestamp'] - \
                           case_processed[handoff_occurred]['time:timestamp']
     # dropping an event at the end which is always 'True'
     handoff.drop(handoff.tail(1).index, inplace=True)
@@ -118,6 +126,7 @@ def main(log_path, output_dir):
     statistics['duration_seconds'] = pd.to_numeric(statistics['duration'])
     statistics.to_excel(result_path)
 
+
 # DONE: Sequential events
 #   - identical dates
 #   - parallel gateways (enabled timestamp)
@@ -136,3 +145,8 @@ def main(log_path, output_dir):
 #   - Do we count only business hours? Yes. Using 24 hours for PurchasingExample.xes
 # DONE: Add total handoff frequency, frequency per case using unique pairs source+resource
 # TODO: Mark manually some events with resource_type label "system" to add handoff type identification
+
+# TODO: Production.xes fails with the current approach
+
+if __name__ == '__main__':
+    main()
