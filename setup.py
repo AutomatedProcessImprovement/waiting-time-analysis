@@ -11,7 +11,8 @@ setup(
         'pandas',
         'numpy',
         'pm4py',
-        'openpyxl'
+        'openpyxl',
+        'pytest'
     ],
     entry_points={
         'console_scripts': [
