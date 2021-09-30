@@ -9,6 +9,7 @@ setup(
     install_requires=[
         'click',
         'pandas',
+        'numpy',
         'pm4py',
         'openpyxl'
     ],
