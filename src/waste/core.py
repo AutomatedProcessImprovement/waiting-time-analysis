@@ -22,12 +22,19 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
         case['time:timestamp'] = case['time:timestamp'] - pd.Timedelta('1 us')
         return case
 
+    def _postprocess_case(case: pd.DataFrame):
+        # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
+        case['time:timestamp'] = case['time:timestamp'] + pd.Timedelta('1 us')
+        return case
+
     case = _preprocess_case(case)
 
     params = {concurrent_activities_get.Parameters.TIMESTAMP_KEY: "time:timestamp",
               concurrent_activities_get.Parameters.START_TIMESTAMP_KEY: "start_timestamp"}
     concurrent_activities = concurrent_activities_get.apply(case, parameters=params)
     result = [activities for activities in concurrent_activities]
+
+    case = _postprocess_case(case)
     return result
 
 
@@ -124,8 +131,9 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
 def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> Optional[pd.DataFrame]:
     # Coming back to concurrent activities to identify sequential to concurrent and concurrent to sequential handoffs.
 
+    # TODO: does this really give us previous and next?
     def _get_previous_and_next_events(case: pd.DataFrame, index: int) -> (
-    Optional[pd.DataFrame], Optional[pd.DataFrame]):
+            Optional[pd.DataFrame], Optional[pd.DataFrame]):
         previous_event = None
         next_event = None
         if index != 0:
@@ -218,3 +226,37 @@ def join_handoffs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
         }, ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result
+
+
+def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
+    enabled_timestamp_key = 'enabled_timestamp'
+    start_timestamp_key = 'start_timestamp'
+    end_timestamp_key = 'time:timestamp'
+
+    case = case.sort_values(by='start_timestamp')
+
+    # default enabled timestamps are start timestamps
+    case[enabled_timestamp_key] = case[start_timestamp_key]
+
+    concurrent_activities = get_concurrent_activities(case)
+
+    for i in case.index:
+        activity_name = case.iloc[i]['concept:name']
+        start = case.iloc[i][start_timestamp_key]
+
+        concurrent_activities_names = None
+        for item in concurrent_activities:
+            if activity_name in item:
+                concurrent_activities_names = item
+                break
+
+        query = '`time:timestamp` <= @start & `concept:name` != @activity_name'
+        if concurrent_activities_names:
+            query += ' & `concept:name` not in @concurrent_activities_names'
+
+        ended_before = case.query(query)
+        if ended_before is not None and not ended_before.empty:
+            enabled_timestamp = ended_before[end_timestamp_key].max()
+            case.at[i, enabled_timestamp_key] = enabled_timestamp
+
+    return case

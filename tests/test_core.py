@@ -21,6 +21,14 @@ def case(assets_path) -> pd.DataFrame:
 
 
 @pytest.fixture
+def case_enabled(assets_path) -> pd.DataFrame:
+    case = pd.read_csv(assets_path / 'bimp-example_case_409_enabled.csv')
+    case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
+    case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
+    return case.sort_values(by='start_timestamp')
+
+
+@pytest.fixture
 def cases(assets_path) -> List[pd.DataFrame]:
     cases = [
         pd.read_csv(assets_path / 'bimp-example_case_21.csv'),
@@ -119,3 +127,26 @@ def test_identify_handoffs_all_cases(bimp_example_path):
 def test_join_handoffs(bimp_example_path, handoffs):
     result = core.join_handoffs(handoffs)
     assert result is not None and not result.empty
+
+
+def test_calculate_enabled_timestamps(case_enabled):
+    case = core.add_enabled_timestamps(case_enabled)
+    assert case is not None
+    assert 'enabled_timestamp' in case.keys()
+
+
+def test_enabled_timestamps(bimp_example_path, case):
+    from pm4py.objects.log.importer.xes import importer as xes_importer
+    from pm4py.objects.conversion.log import converter as log_converter
+
+    log = xes_importer.apply(str(bimp_example_path))
+    event_log = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
+    records_with_assign = event_log['lifecycle:transition'] == 'assign'
+    records_with_case_409 = event_log['case:concept:name'] == '409'
+    case_409_assign = event_log[records_with_assign & records_with_case_409]
+    case_409_assign = case_409_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
+    truth = pd.merge(case, case_409_assign[['elementId', 'assign_timestamp']], on='elementId', how='left')
+
+    test_results = core.add_enabled_timestamps(case)
+
+    assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
