@@ -121,7 +121,7 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
 
 
 # NOTE: mutates aliases
-def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> pd.DataFrame:
+def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> Optional[pd.DataFrame]:
     # Coming back to concurrent activities to identify sequential to concurrent and concurrent to sequential handoffs.
 
     def _get_previous_and_next_events(case: pd.DataFrame, index: int) -> (
@@ -150,7 +150,9 @@ def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> pd.DataFr
         concurrent_handoffs.append(prev_handoffs)
         concurrent_handoffs.append(next_handoffs)
 
-    return pd.concat(concurrent_handoffs)
+    if len(concurrent_handoffs) > 0:
+        return pd.concat(concurrent_handoffs)
+    return None
 
 
 def identify_concurrent_handoffs_left(previous_event: pd.Series, concurrent_events: pd.DataFrame):
@@ -171,7 +173,7 @@ def identify_concurrent_handoffs_right(next_event: pd.Series, concurrent_events:
     return pd.concat(all_handoffs)
 
 
-def identify_handoffs(case: pd.DataFrame) -> pd.DataFrame:
+def identify_handoffs(case: pd.DataFrame) -> Optional[pd.DataFrame]:
     activities = get_concurrent_activities(case)
     aliases = make_aliases_for_concurrent_activities(case, activities)
     case_with_aliases = replace_concurrent_activities_with_aliases(case, activities, aliases)
@@ -185,4 +187,34 @@ def identify_handoffs(case: pd.DataFrame) -> pd.DataFrame:
         index = sequential_handoffs[sequential_handoffs['destination_activity'] == alias_id].index
         sequential_handoffs.drop(index=index, inplace=True)
 
-    return pd.concat([sequential_handoffs, concurrent_handoffs])
+    handoffs = []
+    if sequential_handoffs is not None and not sequential_handoffs.empty:
+        handoffs.append(sequential_handoffs)
+    if concurrent_handoffs is not None and not concurrent_handoffs.empty:
+        handoffs.append(concurrent_handoffs)
+    if len(handoffs) > 1:
+        return pd.concat([sequential_handoffs, concurrent_handoffs])  # TODO: reset index
+    elif len(handoffs) == 1:
+        return handoffs[0]
+    return None
+
+
+def join_handoffs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
+    """Joins a list of handoffs summing up frequency and duration."""
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
+    grouped = pd.concat(handoffs).groupby(columns)
+    result = pd.DataFrame(columns=columns)
+    for pair_index, group in grouped:
+        source_activity, source_resource, destination_activity, destination_resource = pair_index
+        group_duration = group['duration'].sum()
+        group_frequency = group['frequency'].sum()
+        result = result.append({
+            'source_activity': source_activity,
+            'source_resource': source_resource,
+            'destination_activity': destination_activity,
+            'destination_resource': destination_resource,
+            'duration_sum': group_duration,
+            'frequency': group_frequency
+        }, ignore_index=True)
+    result.reset_index(drop=True, inplace=True)
+    return result

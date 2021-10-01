@@ -72,3 +72,28 @@ def test_identify_handoffs(bimp_example_path):
     case = log_grouped.get_group('409').sort_values(by='start_timestamp')
     handoffs = core.identify_handoffs(case)
     assert handoffs is not None
+
+
+def test_identify_handoffs_all_cases(bimp_example_path):
+    log = core.lifecycle_to_interval(bimp_example_path)
+    log_grouped = log.groupby(by='case:concept:name')
+    all_handoffs = []
+    for (case_id, case) in log_grouped:
+        case = case.sort_values(by='start_timestamp')
+        handoffs = core.identify_handoffs(case)
+        if handoffs is not None:
+            all_handoffs.append(handoffs)
+    assert len(all_handoffs) > 0
+
+
+def test_join_handoffs(bimp_example_path):
+    log = core.lifecycle_to_interval(bimp_example_path)
+    log_grouped = log.groupby(by='case:concept:name')
+    all_handoffs = []
+    for (case_id, case) in log_grouped:
+        case = case.sort_values(by='start_timestamp')
+        handoffs = core.identify_handoffs(case)
+        if handoffs is not None:
+            all_handoffs.append(handoffs)
+    result = core.join_handoffs(all_handoffs)
+    assert result is not None and not result.empty
