@@ -1,0 +1,44 @@
+,source_activity,source_resource,destination_activity,destination_resource,duration,frequency
+0,Assess application,Credit Officer-000001,Make credit offer,Credit Officer-000002,0 days 04:56:47.915039,39.0
+1,Assess application,Credit Officer-000001,Notify rejection,Credit Officer-000002,2 days 12:45:53.651117,117.0
+2,Assess application,Credit Officer-000002,Make credit offer,Credit Officer-000001,0 days 07:01:19.185047,47.0
+3,Assess application,Credit Officer-000002,Notify rejection,Credit Officer-000001,0 days 12:47:12.618099,99.0
+4,Check credit history,Clerk-000001,Assess application,Credit Officer-000001,0 days 09:21:11.382032,32.0
+5,Check credit history,Clerk-000001,Assess application,Credit Officer-000002,1 days 18:42:29.739032,32.0
+6,Check credit history,Clerk-000001,Make credit offer,Credit Officer-000001,0 days 08:04:27.157014,14.0
+7,Check credit history,Clerk-000001,Make credit offer,Credit Officer-000002,0 days 01:14:16.707003,3.0
+8,Check credit history,Clerk-000001,Notify rejection,Credit Officer-000001,1 days 08:03:44.497024,24.0
+9,Check credit history,Clerk-000001,Notify rejection,Credit Officer-000002,0 days 17:06:30.480029,29.0
+10,Check credit history,Clerk-000002,Assess application,Credit Officer-000001,1 days 10:36:53.246052,52.0
+11,Check credit history,Clerk-000002,Assess application,Credit Officer-000002,3 days 02:58:10.890040,40.0
+12,Check credit history,Clerk-000002,Make credit offer,Credit Officer-000001,1 days 06:48:05.374014,14.0
+13,Check credit history,Clerk-000002,Make credit offer,Credit Officer-000002,0 days 08:27:56.302010,10.0
+14,Check credit history,Clerk-000002,Notify rejection,Credit Officer-000001,2 days 07:06:15.399023,23.0
+15,Check credit history,Clerk-000002,Notify rejection,Credit Officer-000002,1 days 13:20:43.216029,29.0
+16,Check income sources,Clerk-000001,Assess application,Credit Officer-000001,0 days 09:26:59.579072,72.0
+17,Check income sources,Clerk-000001,Assess application,Credit Officer-000002,0 days 05:59:31.016059,59.0
+18,Check income sources,Clerk-000001,Make credit offer,Credit Officer-000001,1 days 10:43:01.514022,22.0
+19,Check income sources,Clerk-000001,Make credit offer,Credit Officer-000002,0 days 13:07:27.434024,24.0
+20,Check income sources,Clerk-000001,Notify rejection,Credit Officer-000001,0 days 20:55:57.914039,39.0
+21,Check income sources,Clerk-000001,Notify rejection,Credit Officer-000002,1 days 01:30:33.190050,50.0
+22,Check income sources,Clerk-000002,Assess application,Credit Officer-000001,0 days 06:43:04.595054,54.0
+23,Check income sources,Clerk-000002,Assess application,Credit Officer-000002,0 days 05:05:43.818053,53.0
+24,Check income sources,Clerk-000002,Make credit offer,Credit Officer-000001,0 days 11:27:44.369027,27.0
+25,Check income sources,Clerk-000002,Make credit offer,Credit Officer-000002,0 days 02:26:07.339010,10.0
+26,Check income sources,Clerk-000002,Notify rejection,Credit Officer-000001,0 days 20:17:02.902045,45.0
+27,Check income sources,Clerk-000002,Notify rejection,Credit Officer-000002,0 days 17:41:25.083045,45.0
+28,Credit application received,NA,Check credit history,Clerk-000001,8 days 14:54:26.698134,134.0
+29,Credit application received,NA,Check credit history,Clerk-000002,7 days 19:35:17.647168,168.0
+30,Credit application received,NA,Check income sources,Clerk-000001,33 days 15:01:03.254266,266.0
+31,Credit application received,NA,Check income sources,Clerk-000002,36 days 08:29:44.936234,234.0
+32,Make credit offer,Credit Officer-000001,Credit  application  processed,NA,0 days 00:00:00.000105,105.0
+33,Make credit offer,Credit Officer-000002,Credit  application  processed,NA,0 days 00:00:00.000084,84.0
+34,Notify rejection,Credit Officer-000001,Receive customer feedback,System-000001,0 days 00:00:00.000204,204.0
+35,Notify rejection,Credit Officer-000002,Receive customer feedback,System-000001,0 days 00:00:00.000234,234.0
+36,Receive customer feedback,System-000001,Assess application,Credit Officer-000001,0 days 03:11:33.041030,30.0
+37,Receive customer feedback,System-000001,Assess application,Credit Officer-000002,0 days 05:11:36.330034,34.0
+38,Receive customer feedback,System-000001,Credit  application  processed,NA,0 days 00:00:00.000311,311.0
+39,Receive customer feedback,System-000001,Make credit offer,Credit Officer-000001,0 days 03:51:31.960009,9.0
+40,Receive customer feedback,System-000001,Make credit offer,Credit Officer-000002,0 days 07:45:31.579011,11.0
+41,Receive customer feedback,System-000001,Notify rejection,Credit Officer-000001,0 days 08:26:57.616021,21.0
+42,Receive customer feedback,System-000001,Notify rejection,Credit Officer-000002,1 days 03:48:32.244022,22.0
