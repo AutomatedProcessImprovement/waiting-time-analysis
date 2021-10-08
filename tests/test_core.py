@@ -7,7 +7,7 @@ from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 
-from waste import core
+from waste import core, handoff
 
 
 @pytest.fixture
@@ -77,15 +77,15 @@ def test_get_concurrent_activities(cases):
 def test_make_aliases_for_concurrent_activities(cases):
     for case in cases:
         activities = core.get_concurrent_activities(case)
-        aliases = core.make_aliases_for_concurrent_activities(case, activities)
+        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
         assert aliases is not None
 
 
 def test_replace_concurrent_activities_with_aliases(cases):
     for case in cases:
         activities = core.get_concurrent_activities(case)
-        aliases = core.make_aliases_for_concurrent_activities(case, activities)
-        case_with_aliases = core.replace_concurrent_activities_with_aliases(case, activities, aliases)
+        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
+        case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
         assert case_with_aliases is not None
 
 
@@ -95,9 +95,9 @@ def test_identify_sequential_handoffs(bimp_example_path):
     case = log_grouped.get_group('409').sort_values(by='start_timestamp')
     case = core.add_enabled_timestamps(case)
     activities = core.get_concurrent_activities(case)
-    aliases = core.make_aliases_for_concurrent_activities(case, activities)
-    case_with_aliases = core.replace_concurrent_activities_with_aliases(case, activities, aliases)
-    handoffs = core.identify_sequential_handoffs(case_with_aliases)
+    aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
+    case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
+    handoffs = handoff.identify_sequential_handoffs(case_with_aliases)
     assert handoffs is not None
 
 
@@ -105,15 +105,15 @@ def test_identify_concurrent_handoffs(cases):
     for case in cases:
         case = core.add_enabled_timestamps(case)
         activities = core.get_concurrent_activities(case)
-        aliases = core.make_aliases_for_concurrent_activities(case, activities)
-        case_with_aliases = core.replace_concurrent_activities_with_aliases(case, activities, aliases)
-        handoffs = core.identify_concurrent_handoffs(case_with_aliases, aliases)
+        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
+        case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
+        handoffs = handoff.identify_concurrent_handoffs(case_with_aliases, aliases)
         assert handoffs is not None
 
 
 def test_identify_handoffs(cases):
     for case in cases:
-        handoffs = core.identify_handoffs(case)
+        handoffs = handoff.identify_handoffs(case)
         assert handoffs is not None
 
 
@@ -123,14 +123,14 @@ def test_identify_handoffs_all_cases(bimp_example_path):
     all_handoffs = []
     for (case_id, case) in log_grouped:
         case = case.sort_values(by='start_timestamp')
-        handoffs = core.identify_handoffs(case)
+        handoffs = handoff.identify_handoffs(case)
         if handoffs is not None:
             all_handoffs.append(handoffs)
     assert len(all_handoffs) > 0
 
 
 def test_join_handoffs(handoffs):
-    result = core.join_handoffs(handoffs)
+    result = handoff.join_handoffs(handoffs)
     assert result is not None and not result.empty
 
 
