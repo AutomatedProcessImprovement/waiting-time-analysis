@@ -80,35 +80,33 @@ def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
     # per group
     df_grouped = df.groupby(by='case:concept:name')
     for case_id, case in df_grouped:
-        activities = case
-        activities_shifted = case.shift(-1)
+        case_shifted = case.shift(-1)
         # dropping N/A
-        activities = activities.drop(index=activities.tail(1).index)
-        activities_shifted = activities_shifted.drop(index=activities_shifted.tail(1).index)
-        if activities_shifted.size != activities.size:
+        activities = case.drop(index=case.tail(1).index)
+        case_shifted = case_shifted.drop(index=case_shifted.tail(1).index)
+        if case_shifted.size != activities.size:
             raise Exception("Arrays' sizes must be equal")
 
         for i in range(len(activities)):
-            if activities.iloc[i]['time:timestamp'] < activities_shifted.iloc[i]['time:timestamp']:
-                (row, column) = (activities['concept:name'].iloc[i], activities_shifted['concept:name'].iloc[i])
+            if activities.iloc[i]['time:timestamp'] < case_shifted.iloc[i]['time:timestamp']:
+                (row, column) = (activities['concept:name'].iloc[i], case_shifted['concept:name'].iloc[i])
                 matrix.at[row, column] += 1
 
-    parallel_activities_map = {}
+    parallel_activities = set()
     for row in activities_names:
-        parallel_activities_per_row = set()
+        parallel_pair = set()
         for column in activities_names:
             if (matrix.at[row, column] > 0) and (matrix.at[column, row] > 0):
-                parallel_activities_per_row.add(row)
-                parallel_activities_per_row.add(column)
-        if len(parallel_activities_per_row) > 0:
-            parallel_activities_map[tuple(parallel_activities_per_row)] = None  # NOTE: value doesn't matter, keys do
+                parallel_pair.add(row)
+                parallel_pair.add(column)
+        if len(parallel_pair) > 0:
+            parallel_activities.add(tuple(parallel_pair))
 
-    parallel_activities = [k for k in parallel_activities_map]
-    return parallel_activities
+    return list(parallel_activities)
 
 
 def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
-    parallel_activities_map = {}
+    parallel_activities = set()
 
     # per group
     df_grouped = df.groupby(by='case:concept:name')
@@ -117,7 +115,6 @@ def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
         if len(activities) == 0:
             continue
         for concurrent in activities:
-            parallel_activities_map[concurrent] = None  # NOTE: value doesn't matter, keys do
+            parallel_activities.add(concurrent)
 
-    parallel_activities = [k for k in parallel_activities_map]
-    return parallel_activities
+    return list(parallel_activities)
