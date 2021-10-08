@@ -260,3 +260,41 @@ def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
             case.at[i, enabled_timestamp_key] = enabled_timestamp
 
     return case
+
+
+def alpha_oracle(df: pd.DataFrame) -> List[tuple]:
+    df = df.sort_values(by='time:timestamp')
+    activities_names = df['concept:name'].unique()
+    matrix = pd.DataFrame(0, index=activities_names, columns=activities_names)
+    np.fill_diagonal(matrix.values, 0)
+
+    # per group
+    df_grouped = df.groupby(by='case:concept:name')
+    for case_id, case in df_grouped:
+        activities = case['concept:name']
+        activities_shifted = case['concept:name'].shift(-1)
+        # dropping N/A
+        activities = activities.drop(index=activities.tail(1).index)
+        activities_shifted = activities_shifted.drop(index=activities_shifted.tail(1).index)
+        if activities_shifted.size != activities.size:
+            raise Exception("Arrays' sizes must be equal")
+
+        for i in range(activities.size):
+            (row, column) = (activities.iloc[i], activities_shifted.iloc[i])
+            matrix.at[row, column] += 1
+
+    parallel_activities_map = {}
+    for row in activities_names:
+        parallel_activities_per_row = set()
+        for column in activities_names:
+            if matrix.at[row, column] and matrix.at[column, row] > 0:
+                parallel_activities_per_row.add(row)
+                parallel_activities_per_row.add(column)
+        if len(parallel_activities_per_row) > 0:
+            parallel_activities_map[tuple(parallel_activities_per_row)] = None  # NOTE: value doesn't matter, keys do
+
+    parallel_activities = [k for k in parallel_activities_map]
+    return parallel_activities
+
+
+
