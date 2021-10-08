@@ -3,6 +3,9 @@ from typing import List
 
 import pandas as pd
 import pytest
+from pm4py.objects.conversion.log import converter as log_converter
+from pm4py.objects.log.importer.xes import importer as xes_importer
+from pm4py.objects.log.util import interval_lifecycle
 
 from waste import core
 
@@ -90,6 +93,7 @@ def test_identify_sequential_handoffs(bimp_example_path):
     log = core.lifecycle_to_interval(bimp_example_path)
     log_grouped = log.groupby(by='case:concept:name')
     case = log_grouped.get_group('409').sort_values(by='start_timestamp')
+    case = core.add_enabled_timestamps(case)
     activities = core.get_concurrent_activities(case)
     aliases = core.make_aliases_for_concurrent_activities(case, activities)
     case_with_aliases = core.replace_concurrent_activities_with_aliases(case, activities, aliases)
@@ -99,6 +103,7 @@ def test_identify_sequential_handoffs(bimp_example_path):
 
 def test_identify_concurrent_handoffs(cases):
     for case in cases:
+        case = core.add_enabled_timestamps(case)
         activities = core.get_concurrent_activities(case)
         aliases = core.make_aliases_for_concurrent_activities(case, activities)
         case_with_aliases = core.replace_concurrent_activities_with_aliases(case, activities, aliases)

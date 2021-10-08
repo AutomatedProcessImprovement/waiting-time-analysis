@@ -1,6 +1,6 @@
 import uuid
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
@@ -97,7 +97,8 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
     handoff.loc[:, 'source_resource'] = case[handoff_occurred]['org:resource']
     handoff.loc[:, 'destination_activity'] = case[handoff_occurred].shift(-1)['concept:name']
     handoff.loc[:, 'destination_resource'] = case[handoff_occurred].shift(-1)['org:resource']
-    handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred]['time:timestamp']
+    # handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred]['time:timestamp']
+    handoff['duration'] = case[handoff_occurred].shift(-1)['enabled_timestamp'] - case[handoff_occurred]['time:timestamp']
 
     # dropping an event at the end which is always 'True'
     handoff.reset_index(drop=True, inplace=True)
@@ -182,6 +183,7 @@ def identify_concurrent_handoffs_right(next_event: pd.Series, concurrent_events:
 
 
 def identify_handoffs(case: pd.DataFrame) -> Optional[pd.DataFrame]:
+    case = add_enabled_timestamps(case)
     activities = get_concurrent_activities(case)
     aliases = make_aliases_for_concurrent_activities(case, activities)
     case_with_aliases = replace_concurrent_activities_with_aliases(case, activities, aliases)
