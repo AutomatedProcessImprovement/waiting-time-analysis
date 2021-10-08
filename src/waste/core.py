@@ -297,4 +297,6 @@ def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
     return parallel_activities
 
 
+def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
+    parallel_activities_map = {}
 
