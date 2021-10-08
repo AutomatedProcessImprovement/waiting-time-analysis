@@ -241,8 +241,8 @@ def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
     concurrent_activities = get_concurrent_activities(case)
 
     for i in case.index:
-        activity_name = case.iloc[i]['concept:name']
-        start = case.iloc[i][start_timestamp_key]
+        activity_name = case.loc[i]['concept:name']
+        start = case.loc[i][start_timestamp_key]
 
         concurrent_activities_names = None
         for item in concurrent_activities:
