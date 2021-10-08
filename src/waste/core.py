@@ -262,7 +262,7 @@ def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
     return case
 
 
-def alpha_oracle(df: pd.DataFrame) -> List[tuple]:
+def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
     df = df.sort_values(by='time:timestamp')
     activities_names = df['concept:name'].unique()
     matrix = pd.DataFrame(0, index=activities_names, columns=activities_names)
