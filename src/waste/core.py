@@ -302,3 +302,14 @@ def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
 def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
     parallel_activities_map = {}
 
+    # per group
+    df_grouped = df.groupby(by='case:concept:name')
+    for case_id, case in df_grouped:
+        activities = get_concurrent_activities(case)
+        if len(activities) == 0:
+            continue
+        for concurrent in activities:
+            parallel_activities_map[concurrent] = None  # NOTE: value doesn't matter, keys do
+
+    parallel_activities = [k for k in parallel_activities_map]
+    return parallel_activities
