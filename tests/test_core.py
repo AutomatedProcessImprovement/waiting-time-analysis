@@ -124,7 +124,7 @@ def test_identify_handoffs_all_cases(bimp_example_path):
     assert len(all_handoffs) > 0
 
 
-def test_join_handoffs(bimp_example_path, handoffs):
+def test_join_handoffs(handoffs):
     result = core.join_handoffs(handoffs)
     assert result is not None and not result.empty
 
@@ -135,18 +135,48 @@ def test_calculate_enabled_timestamps(case_enabled):
     assert 'enabled_timestamp' in case.keys()
 
 
-def test_enabled_timestamps(bimp_example_path, case):
-    from pm4py.objects.log.importer.xes import importer as xes_importer
-    from pm4py.objects.conversion.log import converter as log_converter
-
+def test_enabled_timestamps_case(bimp_example_path, case):
     log = xes_importer.apply(str(bimp_example_path))
     event_log = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
-    records_with_assign = event_log['lifecycle:transition'] == 'assign'
-    records_with_case_409 = event_log['case:concept:name'] == '409'
-    case_409_assign = event_log[records_with_assign & records_with_case_409]
+
+    case_409_assign = event_log.query('`lifecycle:transition` == "assign" & `case:concept:name` == "409"')
     case_409_assign = case_409_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
     truth = pd.merge(case, case_409_assign[['elementId', 'assign_timestamp']], on='elementId', how='left')
-
     test_results = core.add_enabled_timestamps(case)
-
     assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
+
+
+# def test_enabled_timestamps_all(bimp_example_path):
+#     log = xes_importer.apply(str(bimp_example_path))
+#     log_df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
+#     log_interval = interval_lifecycle.to_interval(log)
+#     log_interval_df = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
+#
+#     # assign_transition = log_df.query('`lifecycle:transition` == "assign"')
+#     # assign_transition = assign_transition.rename(columns={'time:timestamp': 'assign_timestamp'})
+#     # truth = pd.merge(log_df, assign_transition[['elementId', 'assign_timestamp']], on='elementId', how='inner')
+#     #
+#     # assert truth is not None
+#     # test_results = core.add_enabled_timestamps(case)
+#     # assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
+#     #
+#     # interval_lifecycle.to_lifecycle()
+#
+#     grouped = log_interval_df.groupby(by='case:concept:name')
+#     for group, case in grouped:
+#         case_with_assign = log_df.query('`lifecycle:transition` == "assign" & `case:concept:name` == @group')
+#         case_with_assign = case_with_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
+#         case_with_enabled = core.add_enabled_timestamps(case)
+#         assert (case_with_assign.assign_timestamp.values == case_with_enabled.enabled_timestamp.values).all()
+
+
+def test_alpha_oracle(bimp_example_path):
+    log_interval_df = core.lifecycle_to_interval(bimp_example_path)
+    result = core.parallel_activities_with_alpha_oracle(log_interval_df)
+    assert result is not None
+
+
+def test_concurrent_activities_by_time(bimp_example_path):
+    log_interval_df = core.lifecycle_to_interval(bimp_example_path)
+    result = core.concurrent_activities_by_time(log_interval_df)
+    assert result is not None
