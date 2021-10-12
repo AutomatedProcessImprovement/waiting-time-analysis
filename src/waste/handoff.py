@@ -1,7 +1,8 @@
 import uuid
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 
 import pandas as pd
+
 from . import core
 
 
@@ -149,11 +150,12 @@ def identify_concurrent_handoffs_right(next_event: pd.Series, concurrent_events:
     return pd.concat(all_handoffs)
 
 
-def identify_handoffs(case: pd.DataFrame) -> Optional[pd.DataFrame]:
+def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = None) -> Optional[pd.DataFrame]:
     case = core.add_enabled_timestamps(case)
-    activities = core.get_concurrent_activities(case)
-    aliases = make_aliases_for_concurrent_activities(case, activities)
-    case_with_aliases = replace_concurrent_activities_with_aliases(case, activities, aliases)
+    if parallel_activities is None:
+        parallel_activities = core.get_concurrent_activities(case)  # NOTE: per case concurrency identification
+    aliases = make_aliases_for_concurrent_activities(case, parallel_activities)
+    case_with_aliases = replace_concurrent_activities_with_aliases(case, parallel_activities, aliases)
     sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
     concurrent_handoffs = identify_concurrent_handoffs(case_with_aliases, aliases)
 
