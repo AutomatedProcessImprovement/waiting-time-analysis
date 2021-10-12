@@ -16,7 +16,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'waste = waste.main:main',
+            'waste = waste.cli:main',
         ]
     }
 )
