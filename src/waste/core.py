@@ -1,6 +1,6 @@
 from pathlib import Path
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
@@ -38,21 +38,22 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
     return result
 
 
-def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
+def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optional[List[tuple]] = None) -> pd.DataFrame:
     enabled_timestamp_key = 'enabled_timestamp'
     start_timestamp_key = 'start_timestamp'
     end_timestamp_key = 'time:timestamp'
 
-    case = case.sort_values(by='start_timestamp')
+    event_log = event_log.sort_values(by='start_timestamp')
 
     # default enabled timestamps are start timestamps
-    case[enabled_timestamp_key] = case[start_timestamp_key]
+    event_log[enabled_timestamp_key] = event_log[start_timestamp_key]
 
-    concurrent_activities = get_concurrent_activities(case)
+    if concurrent_activities is None:
+        concurrent_activities = get_concurrent_activities(event_log)  # NOTE: per case concurrency identification
 
-    for i in case.index:
-        activity_name = case.loc[i]['concept:name']
-        start = case.loc[i][start_timestamp_key]
+    for i in event_log.index:
+        activity_name = event_log.loc[i]['concept:name']
+        start = event_log.loc[i][start_timestamp_key]
 
         concurrent_activities_names = None
         for item in concurrent_activities:
@@ -64,12 +65,12 @@ def add_enabled_timestamps(case: pd.DataFrame) -> pd.DataFrame:
         if concurrent_activities_names:
             query += ' & `concept:name` not in @concurrent_activities_names'
 
-        ended_before = case.query(query)
+        ended_before = event_log.query(query)
         if ended_before is not None and not ended_before.empty:
             enabled_timestamp = ended_before[end_timestamp_key].max()
-            case.at[i, enabled_timestamp_key] = enabled_timestamp
+            event_log.at[i, enabled_timestamp_key] = enabled_timestamp
 
-    return case
+    return event_log
 
 
 def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:

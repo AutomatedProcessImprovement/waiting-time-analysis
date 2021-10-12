@@ -151,28 +151,19 @@ def test_enabled_timestamps_case(bimp_example_path, case):
     assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
 
 
-# def test_enabled_timestamps_all(bimp_example_path):
-#     log = xes_importer.apply(str(bimp_example_path))
-#     log_df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
-#     log_interval = interval_lifecycle.to_interval(log)
-#     log_interval_df = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
-#
-#     # assign_transition = log_df.query('`lifecycle:transition` == "assign"')
-#     # assign_transition = assign_transition.rename(columns={'time:timestamp': 'assign_timestamp'})
-#     # truth = pd.merge(log_df, assign_transition[['elementId', 'assign_timestamp']], on='elementId', how='inner')
-#     #
-#     # assert truth is not None
-#     # test_results = core.add_enabled_timestamps(case)
-#     # assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
-#     #
-#     # interval_lifecycle.to_lifecycle()
-#
-#     grouped = log_interval_df.groupby(by='case:concept:name')
-#     for group, case in grouped:
-#         case_with_assign = log_df.query('`lifecycle:transition` == "assign" & `case:concept:name` == @group')
-#         case_with_assign = case_with_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
-#         case_with_enabled = core.add_enabled_timestamps(case)
-#         assert (case_with_assign.assign_timestamp.values == case_with_enabled.enabled_timestamp.values).all()
+def test_enabled_timestamps_all(bimp_example_path):
+    log = xes_importer.apply(str(bimp_example_path))
+    log_df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
+    log_interval = interval_lifecycle.to_interval(log)
+    log_interval_df = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
+
+    grouped = log_interval_df.groupby(by='case:concept:name')
+    concurrent_activities = core.parallel_activities_with_alpha_oracle(log_interval_df)
+    for case_id, case in grouped:
+        case_with_assign = log_df.query('`lifecycle:transition` == "assign" & `case:concept:name` == @case_id')
+        case_with_assign = case_with_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
+        case_with_enabled = core.add_enabled_timestamps(case, concurrent_activities)
+        assert (case_with_assign.assign_timestamp.values == case_with_enabled.enabled_timestamp.values).all()
 
 
 def test_alpha_oracle(bimp_example_path):
