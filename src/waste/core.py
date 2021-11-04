@@ -1,5 +1,4 @@
 from pathlib import Path
-from pathlib import Path
 from typing import Tuple, List, Optional
 
 import pandas as pd
@@ -69,6 +68,9 @@ def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optio
         if ended_before is not None and not ended_before.empty:
             enabled_timestamp = ended_before[end_timestamp_key].max()
             event_log.at[i, enabled_timestamp_key] = enabled_timestamp
+
+    event_log[enabled_timestamp_key] = pd.to_datetime(event_log[enabled_timestamp_key], utc=True)  # TODO: different timezones?
+    event_log[end_timestamp_key] = pd.to_datetime(event_log[end_timestamp_key], utc=True)
 
     return event_log
 
