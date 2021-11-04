@@ -9,15 +9,21 @@ from . import core
 def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[Tuple]) -> dict:
     aliases = {}  # {alias: {data: <concurrent events>, replacement: <united event>}}
     for names in activities:
+        if len(names) == 0:
+            continue
+
         # extract concurrent activities data
         data = pd.DataFrame()
         for name in names:
             event = case[case['concept:name'] == name]
             data = data.append(event)
 
+        if data.size == 0:
+            continue
+
         # create an alias for activities
         alias_id = str(uuid.uuid4())
-        replacement = data.iloc[0].copy()  # TODO: potential exception
+        replacement = data.iloc[0].copy()
         replacement['concept:name'] = alias_id
         replacement['start_timestamp'] = data['start_timestamp'].min()
         replacement['time:timestamp'] = data['time:timestamp'].max()
@@ -111,21 +117,30 @@ def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> Optional[
             next_event = case.iloc[index + 1]
         return previous_event, next_event
 
+    if len(aliases) == 0:
+        return None
+
     handoff_occurred = identify_sequential_handoffs_locations(case)
 
     potential_handoffs = case[handoff_occurred].copy()
     potential_handoffs.sort_values(by='start_timestamp', inplace=True)
     potential_handoffs.reset_index(inplace=True, drop=True)
 
-    concurrent_handoffs = []
+    if potential_handoffs.size == 0:
+        return None
 
+    concurrent_handoffs = []
     for alias_id in aliases:
-        index = potential_handoffs[potential_handoffs['concept:name'] == alias_id].index[0]
-        previous_event, next_event = _get_previous_and_next_events(potential_handoffs, index)
+        index = potential_handoffs[potential_handoffs['concept:name'] == alias_id].index
+        if index.size == 0:
+            continue
+        previous_event, next_event = _get_previous_and_next_events(potential_handoffs, index[0])
         prev_handoffs = identify_concurrent_handoffs_left(previous_event, aliases[alias_id]['data'])
         next_handoffs = identify_concurrent_handoffs_right(next_event, aliases[alias_id]['data'])
-        concurrent_handoffs.append(prev_handoffs)
-        concurrent_handoffs.append(next_handoffs)
+        if len(prev_handoffs) > 0:
+            concurrent_handoffs.append(prev_handoffs)
+        if len(next_handoffs) > 0:
+            concurrent_handoffs.append(next_handoffs)
 
     if len(concurrent_handoffs) > 0:
         return pd.concat(concurrent_handoffs)
@@ -141,7 +156,10 @@ def identify_concurrent_handoffs_left(previous_event: pd.Series, concurrent_even
     return pd.concat(all_handoffs)
 
 
-def identify_concurrent_handoffs_right(next_event: pd.Series, concurrent_events: pd.DataFrame):
+def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurrent_events: pd.DataFrame):
+    if next_event is None:
+        return []
+
     all_handoffs = []
     for i in concurrent_events.index:
         sequence = pd.DataFrame([concurrent_events.loc[i], next_event])
