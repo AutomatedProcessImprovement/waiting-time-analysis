@@ -42,7 +42,7 @@ def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optio
     start_timestamp_key = 'start_timestamp'
     end_timestamp_key = 'time:timestamp'
 
-    event_log = event_log.sort_values(by='start_timestamp')
+    event_log = event_log.sort_values(by='time:timestamp')
 
     # default enabled timestamps are start timestamps
     event_log[enabled_timestamp_key] = event_log[start_timestamp_key]

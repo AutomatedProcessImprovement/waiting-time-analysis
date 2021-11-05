@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import List
+
 import pandas as pd
 import pytest
 from pm4py.objects.conversion.log import converter as log_converter
@@ -12,7 +15,7 @@ def case(assets_path) -> pd.DataFrame:
     case = pd.read_csv(assets_path / 'bimp-example_case_409.csv')
     case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
     case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
-    return case.sort_values(by='start_timestamp')
+    return case.sort_values(by='time:timestamp')
 
 
 @pytest.fixture
@@ -20,7 +23,7 @@ def case_enabled(assets_path) -> pd.DataFrame:
     case = pd.read_csv(assets_path / 'bimp-example_case_409_enabled.csv')
     case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
     case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
-    return case.sort_values(by='start_timestamp')
+    return case.sort_values(by='time:timestamp')
 
 
 def test_get_interval_log(bimp_example_path):
@@ -65,7 +68,11 @@ def test_enabled_timestamps_all(bimp_example_path):
         case_with_assign = log_df.query('`lifecycle:transition` == "assign" & `case:concept:name` == @case_id')
         case_with_assign = case_with_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
         case_with_enabled = core.add_enabled_timestamps(case, concurrent_activities)
-        assert (case_with_assign.assign_timestamp.values == case_with_enabled.enabled_timestamp.values).all()
+        case_with_assign = case_with_assign.sort_values(by='assign_timestamp')
+        case_with_enabled = case_with_enabled.sort_values(by='enabled_timestamp')
+
+        comparison = case_with_assign.assign_timestamp.values == case_with_enabled.enabled_timestamp.values
+        assert comparison.all(), f'In {bimp_example_path} for case {case_id} timestamps do not match'
 
 
 def test_alpha_oracle(bimp_example_path):

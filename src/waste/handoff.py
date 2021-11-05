@@ -86,6 +86,8 @@ def identify_sequential_handoffs_locations(case: pd.DataFrame) -> pd.Series:
 
 
 def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
+    case = case.sort_values(by='start_timestamp')
+
     handoff_occurred = identify_sequential_handoffs_locations(case)
 
     # preparing a different dataframe for handoff reporting
@@ -96,7 +98,12 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
     handoff.loc[:, 'destination_activity'] = case[handoff_occurred].shift(-1)['concept:name']
     handoff.loc[:, 'destination_resource'] = case[handoff_occurred].shift(-1)['org:resource']
     # handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred]['time:timestamp']
-    handoff['duration'] = case[handoff_occurred].shift(-1)['enabled_timestamp'] - case[handoff_occurred]['time:timestamp']
+    handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred][
+        'time:timestamp']  # TODO: enabled_timestamp instead of start_timestamp?
+
+    duration = handoff['duration'] / np.timedelta64(1, 's')
+    if NEGATIVE_DURATION_EXCEPTION and sum(duration < 0) != 0:
+        raise Exception('Negative duration')
 
     # dropping an event at the end which is always 'True'
     handoff.reset_index(drop=True, inplace=True)
@@ -175,7 +182,11 @@ def identify_concurrent_handoffs_left(previous_event: pd.Series, concurrent_even
     all_handoffs = []
     for i in concurrent_events.index:
         sequence = pd.DataFrame([previous_event, concurrent_events.loc[i]])
-        handoffs = identify_sequential_handoffs(sequence)
+        try:
+            handoffs = identify_sequential_handoffs(sequence)
+        except Exception as e:
+            print(f'identify_concurrent_handoffs_left failed with {e}')
+            raise e
         all_handoffs.append(handoffs)
     return pd.concat(all_handoffs)
 
@@ -187,19 +198,31 @@ def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurre
     all_handoffs = []
     for i in concurrent_events.index:
         sequence = pd.DataFrame([concurrent_events.loc[i], next_event])
-        handoffs = identify_sequential_handoffs(sequence)
+        try:
+            handoffs = identify_sequential_handoffs(sequence)
+        except Exception as e:
+            print(f'identify_concurrent_handoffs_right failed with {e}')
+            raise e
         all_handoffs.append(handoffs)
     return pd.concat(all_handoffs)
 
 
 def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = None) -> Optional[pd.DataFrame]:
-    case = core.add_enabled_timestamps(case)
+    # TODO: case = core.add_enabled_timestamps(case)
     if parallel_activities is None:
         parallel_activities = core.get_concurrent_activities(case)  # NOTE: per case concurrency identification
     aliases = make_aliases_for_concurrent_activities(case, parallel_activities)
     case_with_aliases = replace_concurrent_activities_with_aliases(case, parallel_activities, aliases)
-    sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
-    concurrent_handoffs = identify_concurrent_handoffs(case_with_aliases, aliases)
+    try:
+        sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
+    except Exception as e:
+        print(f'Sequential handoff identification failed: {e}')
+        raise e
+    try:
+        concurrent_handoffs = identify_concurrent_handoffs(case_with_aliases, aliases)
+    except Exception as e:
+        print(f'Concurrent handoff identification failed: {e}')
+        raise e
 
     # removing handoffs related to aliases
     for alias_id in aliases:

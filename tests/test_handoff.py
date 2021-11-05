@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -33,16 +34,23 @@ def test_replace_concurrent_activities_with_aliases(cases):
         assert case_with_aliases is not None
 
 
-def test_identify_sequential_handoffs(bimp_example_path):
-    log = core.lifecycle_to_interval(bimp_example_path)
-    log_grouped = log.groupby(by='case:concept:name')
-    case = log_grouped.get_group('409').sort_values(by='start_timestamp')
-    case = core.add_enabled_timestamps(case)
-    activities = core.get_concurrent_activities(case)
-    aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
-    case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
-    handoffs = handoff.identify_sequential_handoffs(case_with_aliases)
-    assert handoffs is not None
+def test_identify_sequential_handoffs(xes_paths):
+    for log_path in xes_paths:
+        log = core.lifecycle_to_interval(log_path)
+        log_grouped = log.groupby(by='case:concept:name')
+
+        for case_id, case in log_grouped:
+            case = case.sort_values(by='time:timestamp')
+            case = core.add_enabled_timestamps(case)
+            activities = core.get_concurrent_activities(case)
+            aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
+            case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
+            handoffs = handoff.identify_sequential_handoffs(case_with_aliases)
+
+            assert handoffs is not None
+
+            duration = handoffs.duration / np.timedelta64(1, 's')
+            assert sum(duration < 0) == 0, f'In {log_path} for case {case_id} there are negative durations'
 
 
 def test_identify_concurrent_handoffs(cases):
@@ -66,7 +74,7 @@ def test_identify_handoffs_all_cases(bimp_example_path):
     log_grouped = log.groupby(by='case:concept:name')
     all_handoffs = []
     for (case_id, case) in log_grouped:
-        case = case.sort_values(by='start_timestamp')
+        case = case.sort_values(by='time:timestamp')
         handoffs = handoff.identify_handoffs(case)
         if handoffs is not None:
             all_handoffs.append(handoffs)

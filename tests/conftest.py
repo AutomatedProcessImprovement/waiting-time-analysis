@@ -32,6 +32,14 @@ def cases(assets_path) -> List[pd.DataFrame]:
     def _preprocess(case):
         case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
         case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
-        return case.sort_values(by='start_timestamp')
+        return case.sort_values(by='time:timestamp')
 
     return list(map(_preprocess, cases))
+
+
+@pytest.fixture
+def xes_paths(assets_path) -> List[Path]:
+    return [
+        assets_path / 'BIMP_example.xes',
+        assets_path / 'PurchasingExample.xes',
+    ]
