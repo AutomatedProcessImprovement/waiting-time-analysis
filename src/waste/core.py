@@ -69,8 +69,8 @@ def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optio
             enabled_timestamp = ended_before[end_timestamp_key].max()
             event_log.at[i, enabled_timestamp_key] = enabled_timestamp
 
-    event_log[enabled_timestamp_key] = pd.to_datetime(event_log[enabled_timestamp_key], utc=True)  # TODO: different timezones?
-    event_log[end_timestamp_key] = pd.to_datetime(event_log[end_timestamp_key], utc=True)
+    event_log[enabled_timestamp_key] = pd.to_datetime(event_log[enabled_timestamp_key])
+    event_log[end_timestamp_key] = pd.to_datetime(event_log[end_timestamp_key])
 
     return event_log
 
