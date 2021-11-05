@@ -1,9 +1,28 @@
 import uuid
-from typing import Tuple, Optional
+from pathlib import Path
+from typing import Tuple, Optional, Protocol
 
+import numpy as np
 import pandas as pd
 
 from . import core
+
+NEGATIVE_DURATION_EXCEPTION = False
+
+
+def identify(log_path: Path) -> pd.DataFrame:
+    log = core.lifecycle_to_interval(log_path)
+    log_grouped = log.groupby(by='case:concept:name')
+    all_handoffs = []
+    parallel_activities = core.parallel_activities_with_alpha_oracle(log)
+    for (case_id, case) in log_grouped:
+        case = case.sort_values(by='time:timestamp')
+        handoffs = identify_handoffs(case, parallel_activities)
+        if handoffs is not None:
+            all_handoffs.append(handoffs)
+    result = join_handoffs(all_handoffs)
+    result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
+    return result
 
 
 def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[Tuple]) -> dict:
@@ -29,7 +48,12 @@ def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[
         replacement['time:timestamp'] = data['time:timestamp'].max()
         replacement['org:resource'] = ':'.join(data['org:resource'])
         # NOTE: the rest of the data in this pseudo record is not relevant
-        alias = {'data': data, 'replacement': replacement, 'previous_event': None, 'next_event': None}
+        alias = {
+            'data': data,
+            'replacement': replacement,
+            'previous_event': None,  # TODO: are 'previous_event' and 'next_event' ever used?
+            'next_event': None
+        }
         aliases[alias_id] = alias
 
     return aliases

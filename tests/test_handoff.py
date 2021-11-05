@@ -76,3 +76,10 @@ def test_identify_handoffs_all_cases(bimp_example_path):
 def test_join_handoffs(handoffs):
     result = handoff.join_handoffs(handoffs)
     assert result is not None and not result.empty
+
+
+def test_negative_duration(assets_path):
+    log_path = assets_path / 'PurchasingExample.xes'
+    result = handoff.identify(log_path)
+
+    assert sum(result['duration_sum_seconds'] < 0) == 0

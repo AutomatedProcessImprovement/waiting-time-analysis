@@ -7,30 +7,20 @@ from waste import core, handoff
 
 
 @click.command()
-@click.option('-l', '--log_path', default=None, required=True, help='Path to an event log in XES-format.')
-@click.option('-o', '--output_dir', default='./', show_default=True,
+@click.option('-l', '--log_path', default=None, required=True, type=Path,
+              help='Path to an event log in XES-format.')
+@click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
 def main(log_path, output_dir):
     log_path = Path(log_path)
     output_dir = Path(output_dir)
 
     # hand-off identification
-    log = core.lifecycle_to_interval(log_path)
-    log_grouped = log.groupby(by='case:concept:name')
-    all_handoffs = []
-    parallel_activities = core.parallel_activities_with_alpha_oracle(log)
-    for (case_id, case) in log_grouped:
-        case = case.sort_values(by='start_timestamp')
-        handoffs = handoff.identify_handoffs(case, parallel_activities)
-        if handoffs is not None:
-            all_handoffs.append(handoffs)
-    result = handoff.join_handoffs(all_handoffs)
-
+    result = handoff.identify(log_path)
     # saving results
     output_path = output_dir / log_path.name
     csv_path = output_path.with_suffix('.csv')
     print(f'Saving results to {csv_path}')
-    result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
     result.to_csv(csv_path)
 
 
