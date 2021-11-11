@@ -1,6 +1,12 @@
-.idea/
-data/
 .DS_Store
 *-checkpoint.ipynb
 *.xlsx
 *.egg-info
+
+*.gz
+
+.idea/
+.pytest_cache/
+.ipynb_checkpoints/
+data/
+results/
