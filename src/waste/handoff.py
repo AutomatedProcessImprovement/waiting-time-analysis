@@ -116,7 +116,8 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
 
     # NOTE: dealing with negative durations in cases where the next activity started before the previous one ended
     duration = handoff['duration'] / np.timedelta64(1, 's')
-    handoff.at[duration < 0] = pd.Timedelta(0)
+    if sum(duration < 0) > 0:
+        handoff.at[duration < 0, 'duration'] = pd.Timedelta(0)
 
     # dropping an event at the end which is always 'True'
     handoff.reset_index(drop=True, inplace=True)
