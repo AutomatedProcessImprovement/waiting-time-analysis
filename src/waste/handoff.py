@@ -100,7 +100,7 @@ def identify_sequential_handoffs_locations(case: pd.DataFrame) -> pd.Series:
 
 
 def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
-    case = case.sort_values(by='start_timestamp')
+    case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
 
     handoff_occurred = identify_sequential_handoffs_locations(case)
 
@@ -150,6 +150,7 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
 # NOTE: mutates aliases
 def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict[str, ParallelEventsPair]) -> Optional[pd.DataFrame]:
     # Coming back to concurrent activities to identify sequential to concurrent and concurrent to sequential handoffs.
+    case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
 
     # TODO: does this really give us previous and next?
     def _get_previous_and_next_events(case: pd.DataFrame, index: int) -> (
@@ -168,7 +169,7 @@ def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict[str, Parallel
     handoff_occurred = identify_sequential_handoffs_locations(case)
 
     potential_handoffs = case[handoff_occurred].copy()
-    potential_handoffs.sort_values(by='start_timestamp', inplace=True)
+    potential_handoffs.sort_values(by=['start_timestamp', 'time:timestamp'], inplace=True)
     potential_handoffs.reset_index(inplace=True, drop=True)
 
     if potential_handoffs.size == 0:

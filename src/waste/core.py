@@ -16,6 +16,8 @@ def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
 
 
 def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
+    case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
+
     def _preprocess_case(case: pd.DataFrame):
         # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
         case['time:timestamp'] = case['time:timestamp'] - pd.Timedelta('1 us')
@@ -76,7 +78,7 @@ def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optio
 
 
 def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
-    df = df.sort_values(by=['time:timestamp', 'case:concept:name'])
+    df = df.sort_values(by=['start_timestamp', 'time:timestamp', 'case:concept:name'])
     activities_names = df['concept:name'].unique()
     matrix = pd.DataFrame(0, index=activities_names, columns=activities_names)
 
