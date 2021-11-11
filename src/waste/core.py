@@ -35,7 +35,7 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
     concurrent_activities = concurrent_activities_get.apply(case, parameters=params)
     result = [activities for activities in concurrent_activities]
 
-    case = _postprocess_case(case)
+    _postprocess_case(case)
     return result
 
 

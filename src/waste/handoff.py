@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -48,8 +48,9 @@ class ParallelEventsPair:
         return replacement
 
 
-def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[Tuple]) -> dict[
-    str, ParallelEventsPair]:
+def make_aliases_for_concurrent_activities(
+        case: pd.DataFrame,
+        activities: list[Tuple]) -> dict[str, ParallelEventsPair]:
     aliases: dict[str, ParallelEventsPair] = {}
 
     for names in activities:
@@ -92,7 +93,7 @@ def replace_concurrent_activities_with_aliases(
     return case_with_aliases
 
 
-def identify_sequential_handoffs_locations(case: pd.DataFrame) -> pd.Series:
+def identify_sequential_handoffs_locations(case: pd.DataFrame) -> Union[bool, int]:
     resource_changed = case['org:resource'] != case.shift(-1)['org:resource']
     activity_changed = case['concept:name'] != case.shift(-1)['concept:name']
     handoff_occurred = resource_changed & activity_changed  # both conditions must be satisfied
@@ -115,9 +116,9 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
     handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred][
         'time:timestamp']  # TODO: enabled_timestamp instead of start_timestamp?
 
+    # NOTE: dealing with negative durations in cases where the next activity started before the previous one ended
     duration = handoff['duration'] / np.timedelta64(1, 's')
-    if CHECK_NEGATIVE_DURATION_EXCEPTION and sum(duration < 0) != 0:
-        raise Exception('Negative duration')
+    handoff.at[duration < 0] = pd.Timedelta(0)
 
     # dropping an event at the end which is always 'True'
     handoff.reset_index(drop=True, inplace=True)
@@ -265,8 +266,8 @@ def join_handoffs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
     result = pd.DataFrame(columns=columns)
     for pair_index, group in grouped:
         source_activity, source_resource, destination_activity, destination_resource = pair_index
-        group_duration = group['duration'].sum()
-        group_frequency = group['frequency'].sum()
+        group_duration: pd.Timedelta = group['duration'].sum()
+        group_frequency: float = group['frequency'].sum()
         result = result.append({
             'source_activity': source_activity,
             'source_resource': source_resource,
