@@ -8,8 +8,6 @@ import pandas as pd
 
 from . import core
 
-CHECK_NEGATIVE_DURATION_EXCEPTION = True
-
 
 def identify(log_path: Path) -> pd.DataFrame:
     log = core.lifecycle_to_interval(log_path)
@@ -198,11 +196,7 @@ def identify_concurrent_handoffs_left(previous_event: pd.Series, concurrent_even
     all_handoffs = []
     for i in concurrent_events.index:
         sequence = pd.DataFrame([previous_event, concurrent_events.loc[i]])
-        try:
-            handoffs = identify_sequential_handoffs(sequence)
-        except Exception as e:
-            print(f'identify_concurrent_handoffs_left failed with {e}')
-            raise e
+        handoffs = identify_sequential_handoffs(sequence)
         all_handoffs.append(handoffs)
     return pd.concat(all_handoffs)
 
@@ -214,11 +208,7 @@ def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurre
     all_handoffs = []
     for i in concurrent_events.index:
         sequence = pd.DataFrame([concurrent_events.loc[i], next_event])
-        try:
-            handoffs = identify_sequential_handoffs(sequence)
-        except Exception as e:
-            print(f'identify_concurrent_handoffs_right failed with {e}')
-            raise e
+        handoffs = identify_sequential_handoffs(sequence)
         all_handoffs.append(handoffs)
     return pd.concat(all_handoffs)
 
@@ -229,16 +219,8 @@ def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = Non
         parallel_activities = core.get_concurrent_activities(case)  # NOTE: per case concurrency identification
     aliases = make_aliases_for_concurrent_activities(case, parallel_activities)
     case_with_aliases = replace_concurrent_activities_with_aliases(case, parallel_activities, aliases)
-    try:
-        sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
-    except Exception as e:
-        print(f'Sequential handoff identification failed: {e}')
-        raise e
-    try:
-        concurrent_handoffs = identify_concurrent_handoffs(case_with_aliases, aliases)
-    except Exception as e:
-        print(f'Concurrent handoff identification failed: {e}')
-        raise e
+    sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
+    concurrent_handoffs = identify_concurrent_handoffs(case_with_aliases, aliases)
 
     # removing handoffs related to aliases
     for alias_id in aliases:
