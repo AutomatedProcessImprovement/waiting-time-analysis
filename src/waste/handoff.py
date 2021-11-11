@@ -218,12 +218,13 @@ def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurre
     if next_event is None:
         return []
 
-    all_handoffs = []
-    for i in concurrent_events.index:
-        sequence = pd.DataFrame([concurrent_events.loc[i], next_event])
-        handoffs = identify_sequential_handoffs(sequence)
-        all_handoffs.append(handoffs)
-    return pd.concat(all_handoffs)
+    # NOTE: according to the issue #2 in GitHub (https://github.com/AutomatedProcessImprovement/Waste-Calculation/issues/2),
+    # we take only one activity from a parallel pair, which finished the latest, and count only one hand-off
+    prev_event = concurrent_events.loc[concurrent_events['time:timestamp'].idxmax()]
+    sequence = pd.DataFrame([prev_event, next_event])
+    handoff = identify_sequential_handoffs(sequence)
+
+    return handoff
 
 
 def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = None) -> Optional[pd.DataFrame]:
