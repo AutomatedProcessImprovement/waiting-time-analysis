@@ -1,13 +1,14 @@
 import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, Optional, Protocol
+from typing import Tuple, Optional
 
 import numpy as np
 import pandas as pd
 
 from . import core
 
-NEGATIVE_DURATION_EXCEPTION = False
+CHECK_NEGATIVE_DURATION_EXCEPTION = True
 
 
 def identify(log_path: Path) -> pd.DataFrame:
@@ -25,8 +26,32 @@ def identify(log_path: Path) -> pd.DataFrame:
     return result
 
 
-def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[Tuple]) -> dict:
-    aliases = {}  # {alias: {data: <concurrent events>, replacement: <united event>}}
+@dataclass
+class ParallelEventsPair:
+    events: pd.DataFrame  # original data
+    id: str = field(init=False)
+    alias: pd.DataFrame = field(init=False)  # new temporal representation
+
+    def __post_init__(self):
+        self.id = str(uuid.uuid4())
+        self.alias = self.compose_alias(self.events)
+
+    @staticmethod
+    def compose_alias(events) -> pd.DataFrame:
+        if len(events) == 0:
+            raise ValueError('Events must not be of length 0')
+        replacement = events.iloc[0].copy()
+        replacement['concept:name'] = ':'.join(events['concept:name'])
+        replacement['start_timestamp'] = events['start_timestamp'].min()
+        replacement['time:timestamp'] = events['time:timestamp'].max()
+        replacement['org:resource'] = ':'.join(events['org:resource'])
+        return replacement
+
+
+def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[Tuple]) -> dict[
+    str, ParallelEventsPair]:
+    aliases: dict[str, ParallelEventsPair] = {}
+
     for names in activities:
         if len(names) == 0:
             continue
@@ -40,28 +65,17 @@ def make_aliases_for_concurrent_activities(case: pd.DataFrame, activities: list[
         if data.size == 0:
             continue
 
-        # create an alias for activities
-        alias_id = str(uuid.uuid4())
-        replacement = data.iloc[0].copy()
-        replacement['concept:name'] = alias_id
-        replacement['start_timestamp'] = data['start_timestamp'].min()
-        replacement['time:timestamp'] = data['time:timestamp'].max()
-        replacement['org:resource'] = ':'.join(data['org:resource'])
-        # NOTE: the rest of the data in this pseudo record is not relevant
-        alias = {
-            'data': data,
-            'replacement': replacement,
-            'previous_event': None,  # TODO: are 'previous_event' and 'next_event' ever used?
-            'next_event': None
-        }
-        aliases[alias_id] = alias
+        alias = ParallelEventsPair(events=data)
+        aliases[alias.id] = alias
 
     return aliases
 
 
-def replace_concurrent_activities_with_aliases(case: pd.DataFrame, activities: list[Tuple],
-                                               aliases: dict) -> pd.DataFrame:
-    # Creating a new case dataframe with concurrent activities replaced by aliases to identify all sequential handoffs.
+def replace_concurrent_activities_with_aliases(
+        case: pd.DataFrame,
+        activities: list[Tuple],
+        aliases: dict[str, ParallelEventsPair]) -> pd.DataFrame:
+    """Creating a new case dataframe with concurrent activities replaced by aliases to identify all sequential handoffs."""
 
     # dropping concurrent activities
     case_with_aliases = case.copy()
@@ -71,7 +85,7 @@ def replace_concurrent_activities_with_aliases(case: pd.DataFrame, activities: l
 
     # adding concurrent activities replacements
     for alias_id in aliases:
-        case_with_aliases = case_with_aliases.append(aliases[alias_id]['replacement'])
+        case_with_aliases = case_with_aliases.append(aliases[alias_id].alias)
 
     case_with_aliases.reset_index(inplace=True, drop=True)
     case_with_aliases.sort_values(by='start_timestamp', inplace=True)
@@ -102,7 +116,7 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
         'time:timestamp']  # TODO: enabled_timestamp instead of start_timestamp?
 
     duration = handoff['duration'] / np.timedelta64(1, 's')
-    if NEGATIVE_DURATION_EXCEPTION and sum(duration < 0) != 0:
+    if CHECK_NEGATIVE_DURATION_EXCEPTION and sum(duration < 0) != 0:
         raise Exception('Negative duration')
 
     # dropping an event at the end which is always 'True'
@@ -134,7 +148,7 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
 
 
 # NOTE: mutates aliases
-def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> Optional[pd.DataFrame]:
+def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict[str, ParallelEventsPair]) -> Optional[pd.DataFrame]:
     # Coming back to concurrent activities to identify sequential to concurrent and concurrent to sequential handoffs.
 
     # TODO: does this really give us previous and next?
@@ -162,12 +176,12 @@ def identify_concurrent_handoffs(case: pd.DataFrame, aliases: dict) -> Optional[
 
     concurrent_handoffs = []
     for alias_id in aliases:
-        index = potential_handoffs[potential_handoffs['concept:name'] == alias_id].index
+        index = potential_handoffs[potential_handoffs['concept:name'] == aliases[alias_id].alias['concept:name']].index
         if index.size == 0:
             continue
         previous_event, next_event = _get_previous_and_next_events(potential_handoffs, index[0])
-        prev_handoffs = identify_concurrent_handoffs_left(previous_event, aliases[alias_id]['data'])
-        next_handoffs = identify_concurrent_handoffs_right(next_event, aliases[alias_id]['data'])
+        prev_handoffs = identify_concurrent_handoffs_left(previous_event, aliases[alias_id].events)
+        next_handoffs = identify_concurrent_handoffs_right(next_event, aliases[alias_id].events)
         if len(prev_handoffs) > 0:
             concurrent_handoffs.append(prev_handoffs)
         if len(next_handoffs) > 0:
