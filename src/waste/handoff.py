@@ -1,3 +1,5 @@
+import concurrent.futures
+import multiprocessing
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,11 +16,21 @@ def identify(log_path: Path) -> pd.DataFrame:
     log_grouped = log.groupby(by='case:concept:name')
     all_handoffs = []
     parallel_activities = core.parallel_activities_with_alpha_oracle(log)
-    for (case_id, case) in log_grouped:
-        case = case.sort_values(by='time:timestamp')
-        handoffs = identify_handoffs(case, parallel_activities)
-        if handoffs is not None:
-            all_handoffs.append(handoffs)
+
+    n_cores = multiprocessing.cpu_count() - 1
+    handles = []
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+        for (case_id, case) in log_grouped:
+            case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
+            handle = executor.submit(identify_handoffs, case, parallel_activities)
+            handles.append(handle)
+
+    for h in handles:
+        done = h.done()
+        result = h.result()
+        if done and result is not None:
+            all_handoffs.append(result)
+
     result = join_handoffs(all_handoffs)
     result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
     return result

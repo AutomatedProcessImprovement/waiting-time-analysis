@@ -45,7 +45,5 @@ def main(log_path, output_dir):
 
 # TODO: Production.xes fails with the current approach
 
-# TODO: concurrency algorithm produces negative duration in BIMP_example
-
 if __name__ == '__main__':
     main()
