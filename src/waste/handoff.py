@@ -237,9 +237,11 @@ def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = Non
 
     # removing handoffs related to aliases
     for alias_id in aliases:
-        index = sequential_handoffs[sequential_handoffs['source_activity'] == alias_id].index
+        index = sequential_handoffs[
+            sequential_handoffs['source_activity'] == aliases[alias_id].alias['concept:name']].index
         sequential_handoffs.drop(index=index, inplace=True)
-        index = sequential_handoffs[sequential_handoffs['destination_activity'] == alias_id].index
+        index = sequential_handoffs[
+            sequential_handoffs['destination_activity'] == aliases[alias_id].alias['concept:name']].index
         sequential_handoffs.drop(index=index, inplace=True)
 
     handoffs = []
@@ -248,7 +250,7 @@ def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = Non
     if concurrent_handoffs is not None and not concurrent_handoffs.empty:
         handoffs.append(concurrent_handoffs)
     if len(handoffs) > 1:
-        return pd.concat([sequential_handoffs, concurrent_handoffs])  # TODO: reset index
+        return pd.concat([sequential_handoffs, concurrent_handoffs], ignore_index=True)
     elif len(handoffs) == 1:
         return handoffs[0]
     return None
