@@ -21,7 +21,7 @@ def main(log_path, output_dir):
     output_path = output_dir / log_path.name
     csv_path = output_path.with_suffix('.csv')
     print(f'Saving results to {csv_path}')
-    result.to_csv(csv_path)
+    result.to_csv(csv_path, index=False)
 
 
 # DONE: Sequential events
