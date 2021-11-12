@@ -123,3 +123,10 @@ def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
             parallel_activities.add(concurrent)
 
     return list(parallel_activities)
+
+
+def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
+                               df1_col_name: str, df2_col_name: Optional[str] = None) -> pd.DataFrame:
+    if df2_col_name is None:
+        df2_col_name = df1_col_name
+    return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')

@@ -1,6 +1,3 @@
-from pathlib import Path
-from typing import List
-
 import pandas as pd
 import pytest
 from pm4py.objects.conversion.log import converter as log_converter
@@ -8,6 +5,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 
 from waste import core
+from waste.core import timezone_aware_subtraction
 
 
 @pytest.fixture
@@ -85,3 +83,9 @@ def test_concurrent_activities_by_time(bimp_example_path):
     log_interval_df = core.lifecycle_to_interval(bimp_example_path)
     result = core.concurrent_activities_by_time(log_interval_df)
     assert result is not None
+
+
+def test_timezone_aware_subtraction():
+    df1 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 13:00+0200')]})
+    df2 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 14:00+0300')]})
+    assert (timezone_aware_subtraction(df1, df2, 'timestamp') == pd.Series([pd.Timedelta(0)])).all()
