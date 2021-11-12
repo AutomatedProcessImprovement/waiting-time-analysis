@@ -11,25 +11,32 @@ import pandas as pd
 from . import core
 
 
-def identify(log_path: Path) -> pd.DataFrame:
+def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
     log = core.lifecycle_to_interval(log_path)
     log_grouped = log.groupby(by='case:concept:name')
     all_handoffs = []
     parallel_activities = core.parallel_activities_with_alpha_oracle(log)
 
-    n_cores = multiprocessing.cpu_count() - 1
-    handles = []
-    with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+    if parallel_run:
+        n_cores = multiprocessing.cpu_count() - 1
+        handles = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+            for (case_id, case) in log_grouped:
+                case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
+                handle = executor.submit(identify_handoffs, case, parallel_activities)
+                handles.append(handle)
+
+        for h in handles:
+            done = h.done()
+            result = h.result()
+            if done and not result.empty:
+                all_handoffs.append(result)
+    else:
         for (case_id, case) in log_grouped:
             case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
-            handle = executor.submit(identify_handoffs, case, parallel_activities)
-            handles.append(handle)
-
-    for h in handles:
-        done = h.done()
-        result = h.result()
-        if done and result is not None:
-            all_handoffs.append(result)
+            result = identify_handoffs(case, parallel_activities)
+            if result is not None:
+                all_handoffs.append(result)
 
     result = join_handoffs(all_handoffs)
     result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
@@ -122,18 +129,30 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
     handoff.loc[:, 'source_resource'] = case[handoff_occurred]['org:resource']
     handoff.loc[:, 'destination_activity'] = case[handoff_occurred].shift(-1)['concept:name']
     handoff.loc[:, 'destination_resource'] = case[handoff_occurred].shift(-1)['org:resource']
-    # handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred]['time:timestamp']
-    handoff['duration'] = case[handoff_occurred].shift(-1)['start_timestamp'] - case[handoff_occurred][
-        'time:timestamp']  # TODO: enabled_timestamp instead of start_timestamp?
+    handoff.loc[:, 'start_timestamp'] = case[handoff_occurred]['time:timestamp']
+    handoff.loc[:, 'end_timestamp'] = case[handoff_occurred].shift(-1)['start_timestamp']
+
+    # dropping an event at the end which is always 'True'Z
+    handoff.drop(handoff.tail(1).index, inplace=True)
+
+    # NOTE: we can disregard timezones because we use timestamps here only for duration calculation
+    handoff.start_timestamp = pd.to_datetime(handoff.start_timestamp, utc=True)
+    handoff.end_timestamp = pd.to_datetime(handoff.end_timestamp, utc=True)
+
+    # if not isinstance(handoff.start_timestamp.dtypes, DatetimeTZDtype) or not isinstance(handoff.end_timestamp.dtypes, DatetimeTZDtype):
+    #     print(f'start timestamp {handoff.start_timestamp.dtypes}\n\nend_timestamp {handoff.end_timestamp.dtypes}')
+    #     print(f'start timestamp {handoff.start_timestamp}\n\nend_timestamp {handoff.end_timestamp}')
+    #     raise Exception('Wrong types')
 
     # NOTE: dealing with negative durations in cases where the next activity started before the previous one ended
-    duration = handoff['duration'] / np.timedelta64(1, 's')
-    if sum(duration < 0) > 0:
-        handoff.at[duration < 0, 'duration'] = pd.Timedelta(0)
+    handoff['duration'] = handoff.start_timestamp.dt.tz_convert(tz='UTC') - handoff.end_timestamp.dt.tz_convert(tz='UTC')
 
-    # dropping an event at the end which is always 'True'
+    handoff = handoff.drop(columns=['start_timestamp', 'end_timestamp'])
     handoff.reset_index(drop=True, inplace=True)
-    handoff.drop(handoff.tail(1).index, inplace=True)
+
+    negative_duration = handoff['duration'] < pd.Timedelta(0)
+    if sum(negative_duration) > 0:
+        handoff.at[negative_duration, 'duration'] = pd.Timedelta(0)
 
     # filling in N/A with some values
     handoff['source_resource'] = handoff['source_resource'].fillna('NA')
@@ -220,7 +239,7 @@ def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurre
 
     # NOTE: according to the issue #2 in GitHub (https://github.com/AutomatedProcessImprovement/Waste-Calculation/issues/2),
     # we take only one activity from a parallel pair, which finished the latest, and count only one hand-off
-    prev_event = concurrent_events.loc[concurrent_events['time:timestamp'].idxmax()]
+    prev_event = concurrent_events.loc[pd.to_datetime(concurrent_events['time:timestamp'], utc=True).idxmax()]
     sequence = pd.DataFrame([prev_event, next_event])
     handoff = identify_sequential_handoffs(sequence)
 
