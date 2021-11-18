@@ -11,12 +11,13 @@ from waste import core, handoff
               help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
-def main(log_path, output_dir):
+@click.option('-p', '--parallel', is_flag=True, help='Run the tool using all available cores in parallel.')
+def main(log_path, output_dir, parallel):
     log_path = Path(log_path)
     output_dir = Path(output_dir)
 
     # hand-off identification
-    result = handoff.identify(log_path)
+    result = handoff.identify(log_path, parallel)
     # saving results
     output_path = output_dir / log_path.name
     csv_path = output_path.with_suffix('.csv')

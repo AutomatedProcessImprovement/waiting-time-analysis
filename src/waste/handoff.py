@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Tuple, Optional, Union
 
+import click
 import numpy as np
 import pandas as pd
 
@@ -12,6 +13,8 @@ from . import core
 
 
 def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
+    click.echo(f'● Parallel run: {parallel_run}')
+
     log = core.lifecycle_to_interval(log_path)
     log_grouped = log.groupby(by='case:concept:name')
     all_handoffs = []
