@@ -1,11 +1,15 @@
 from pathlib import Path
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 
 import pandas as pd
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
+
+from config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
+    HeuristicsThresholds, EventLogIDs
+from data_frame.concurrency_oracle import HeuristicsConcurrencyOracle
 
 
 def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
@@ -75,6 +79,27 @@ def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optio
     event_log[end_timestamp_key] = pd.to_datetime(event_log[end_timestamp_key])
 
     return event_log
+
+
+def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, set]:
+    column_names = EventLogIDs(
+        case='case:concept:name',
+        activity='concept:name',
+        start_timestamp='start_timestamp',
+        end_timestamp='time:timestamp',
+        resource='org:resource',
+        lifecycle='lifecycle:transition'
+    )
+    config = Configuration(
+        log_ids=column_names,
+        re_estimation_method=ReEstimationMethod.MODE,
+        concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
+        resource_availability_type=ResourceAvailabilityType.SIMPLE,
+        bot_resources={"Start", "End"},
+        heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
+    )
+    oracle = HeuristicsConcurrencyOracle(log, config)
+    return oracle.concurrency
 
 
 def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
