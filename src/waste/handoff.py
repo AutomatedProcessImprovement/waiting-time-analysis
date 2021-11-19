@@ -3,7 +3,7 @@ import multiprocessing
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, Dict
 
 import click
 import numpy as np
@@ -13,20 +13,20 @@ from . import core
 
 
 def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
-    click.echo(f'● Parallel run: {parallel_run}')
+    click.echo(f'Parallel run: {parallel_run}')
 
     log = core.lifecycle_to_interval(log_path)
+    parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
+
     log_grouped = log.groupby(by='case:concept:name')
     all_handoffs = []
-    parallel_activities = core.parallel_activities_with_alpha_oracle(log)
-
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in log_grouped:
-                case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
-                handle = executor.submit(identify_handoffs, case, parallel_activities)
+                case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+                handle = executor.submit(identify_handoffs_without_aliases, case, parallel_activities)
                 handles.append(handle)
 
         for h in handles:
@@ -36,8 +36,8 @@ def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
                 all_handoffs.append(result)
     else:
         for (case_id, case) in log_grouped:
-            case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
-            result = identify_handoffs(case, parallel_activities)
+            case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+            result = identify_handoffs_without_aliases(case, parallel_activities)
             if result is not None:
                 all_handoffs.append(result)
 
@@ -70,7 +70,8 @@ class ParallelEventsPair:
 
 def make_aliases_for_concurrent_activities(
         case: pd.DataFrame,
-        activities: list[Tuple]) -> dict[str, ParallelEventsPair]:
+        activities: list[Tuple]) -> dict[
+    str, ParallelEventsPair]:
     aliases: dict[str, ParallelEventsPair] = {}
 
     for names in activities:
@@ -148,7 +149,8 @@ def identify_sequential_handoffs(case: pd.DataFrame) -> pd.DataFrame:
     #     raise Exception('Wrong types')
 
     # NOTE: dealing with negative durations in cases where the next activity started before the previous one ended
-    handoff['duration'] = handoff.start_timestamp.dt.tz_convert(tz='UTC') - handoff.end_timestamp.dt.tz_convert(tz='UTC')
+    handoff['duration'] = handoff.start_timestamp.dt.tz_convert(tz='UTC') - handoff.end_timestamp.dt.tz_convert(
+        tz='UTC')
 
     handoff = handoff.drop(columns=['start_timestamp', 'end_timestamp'])
     handoff.reset_index(drop=True, inplace=True)
@@ -249,10 +251,88 @@ def identify_concurrent_handoffs_right(next_event: Optional[pd.Series], concurre
     return handoff
 
 
-def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple] = None) -> Optional[pd.DataFrame]:
+def identify_handoffs_without_aliases(case: pd.DataFrame, parallel_activities: Dict[str, set]):
+    case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
+    case.reset_index()
+
+    next_events = case.shift(-1)
+    resource_changed = case['org:resource'] != next_events['org:resource']
+    activity_changed = case['concept:name'] != next_events['concept:name']
+    consecutive_timestamps = case['time:timestamp'] <= next_events['start_timestamp']
+
+    not_parallel = pd.Series(index=case.index)
+    prev_activities = case['concept:name']
+    next_activities = next_events['concept:name']
+    for (i, pair) in enumerate(zip(prev_activities, next_activities)):
+        if pair[0] == pair[1]:
+            not_parallel.iat[i] = False
+            continue
+        parallel_set = parallel_activities.get(pair[1], None)
+        if parallel_set and pair[0] in parallel_set:
+            not_parallel.iat[i] = False
+        else:
+            not_parallel.iat[i] = True
+    not_parallel = pd.Series(not_parallel)
+
+    handoff_occurred = resource_changed & activity_changed & consecutive_timestamps & not_parallel
+    handoffs_index = case[handoff_occurred].index
+
+    # preparing a different dataframe for handoff reporting
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource', 'duration']
+    handoffs = pd.DataFrame(columns=columns)
+    for loc in handoffs_index:
+        source = case.loc[loc]
+        destination = case.loc[loc + 1]
+
+        # duration calculation
+        destination_start = pd.to_datetime(destination['start_timestamp'], utc=True)
+        source_end = pd.to_datetime(source['time:timestamp'], utc=True)
+        duration = destination_start.tz_convert(tz='UTC') - source_end.tz_convert(tz='UTC')
+        if duration < pd.Timedelta(0):
+            duration = pd.Timedelta(0)
+
+        # appending the handoff data
+        handoffs = handoffs.append({
+            'source_activity': source['concept:name'],
+            'source_resource': source['org:resource'],
+            'destination_activity': destination['concept:name'],
+            'destination_resource': destination['org:resource'],
+            'duration': duration
+        }, ignore_index=True)
+
+    # filling in N/A with some values
+    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
+    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
+
+    # calculating frequency per case of the handoffs with the same activities and resources
+    handoff_with_frequency = pd.DataFrame(columns=columns)
+    handoff_grouped = handoffs.groupby(by=[
+        'source_activity', 'source_resource', 'destination_activity', 'destination_resource'
+    ])
+    for group in handoff_grouped:
+        pair, records = group
+        handoff_with_frequency = handoff_with_frequency.append(pd.Series({
+            'source_activity': pair[0],
+            'source_resource': pair[1],
+            'destination_activity': pair[2],
+            'destination_resource': pair[3],
+            'duration': records['duration'].sum(),
+            'frequency': len(records)
+        }), ignore_index=True)
+
+    # dropping edge cases with Start and End as an activity
+    starts_ends_values = ['Start', 'End']
+    starts_and_ends = (handoff_with_frequency['source_activity'].isin(starts_ends_values)
+                       & handoff_with_frequency['source_resource'].isin(starts_ends_values)) \
+                      | (handoff_with_frequency['destination_activity'].isin(starts_ends_values)
+                         & handoff_with_frequency['destination_resource'].isin(starts_ends_values))
+    handoff_with_frequency = handoff_with_frequency[starts_and_ends == False]
+
+    return handoff_with_frequency
+
+
+def identify_handoffs(case: pd.DataFrame, parallel_activities: list[tuple]) -> Optional[pd.DataFrame]:
     # TODO: case = core.add_enabled_timestamps(case)
-    if parallel_activities is None:
-        parallel_activities = core.get_concurrent_activities(case)  # NOTE: per case concurrency identification
     aliases = make_aliases_for_concurrent_activities(case, parallel_activities)
     case_with_aliases = replace_concurrent_activities_with_aliases(case, parallel_activities, aliases)
     sequential_handoffs = identify_sequential_handoffs(case_with_aliases)
