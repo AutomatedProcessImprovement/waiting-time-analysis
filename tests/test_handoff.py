@@ -1,10 +1,9 @@
 from typing import List
 
-import numpy as np
 import pandas as pd
 import pytest
 
-from waste import core, handoff
+from waste import handoff
 
 
 @pytest.fixture
@@ -19,75 +18,12 @@ def handoffs(assets_path) -> List[pd.DataFrame]:
     ]
 
 
-def test_make_aliases_for_concurrent_activities(cases):
-    for case in cases:
-        activities = core.get_concurrent_activities(case)
-        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
-        assert aliases is not None
-
-
-def test_replace_concurrent_activities_with_aliases(cases):
-    for case in cases:
-        activities = core.get_concurrent_activities(case)
-        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
-        case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
-        assert case_with_aliases is not None
-
-
-def test_identify_sequential_handoffs(xes_paths):
-    for log_path in xes_paths:
-        log = core.lifecycle_to_interval(log_path)
-        log_grouped = log.groupby(by='case:concept:name')
-
-        for case_id, case in log_grouped:
-            case = case.sort_values(by='time:timestamp')
-            case = core.add_enabled_timestamps(case)
-            activities = core.get_concurrent_activities(case)
-            aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
-            case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
-            handoffs = handoff.identify_sequential_handoffs(case_with_aliases)
-
-            assert handoffs is not None
-
-            duration = handoffs.duration / np.timedelta64(1, 's')
-            assert sum(duration < 0) == 0, f'In {log_path} for case {case_id} there are negative durations'
-
-
-def test_identify_concurrent_handoffs(cases):
-    for case in cases:
-        case = core.add_enabled_timestamps(case)
-        activities = core.get_concurrent_activities(case)
-        aliases = handoff.make_aliases_for_concurrent_activities(case, activities)
-        case_with_aliases = handoff.replace_concurrent_activities_with_aliases(case, activities, aliases)
-        handoffs = handoff.identify_concurrent_handoffs(case_with_aliases, aliases)
-        assert handoffs is not None
-
-
-def test_identify_handoffs(cases):
-    for case in cases:
-        handoffs = handoff.identify_handoffs(case)
-        assert handoffs is not None
-
-
-def test_identify_handoffs_all_cases(bimp_example_path):
-    log = core.lifecycle_to_interval(bimp_example_path)
-    log_grouped = log.groupby(by='case:concept:name')
-    all_handoffs = []
-    for (case_id, case) in log_grouped:
-        case = case.sort_values(by='time:timestamp')
-        handoffs = handoff.identify_handoffs(case)
-        if handoffs is not None:
-            all_handoffs.append(handoffs)
-    assert len(all_handoffs) > 0
-
-
 def test_join_handoffs(handoffs):
-    result = handoff.join_handoffs(handoffs)
+    result = handoff._join_per_case_handoffs(handoffs)
     assert result is not None and not result.empty
 
 
 def test_negative_duration(assets_path):
     log_path = assets_path / 'PurchasingExample.xes'
     result = handoff.identify(log_path)
-
     assert sum(result['duration_sum_seconds'] < 0) == 0
