@@ -1,5 +1,6 @@
 import concurrent.futures
 import multiprocessing
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict
 
@@ -44,11 +45,19 @@ def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
     return result
 
 
-def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set]):
+def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activities: Dict[str, set]) -> bool:
+    activity_names = parallel_activities.get(activity_name_one, None)
+    if activity_names and activity_name_two in activity_names:
+        return True
+    return False
+
+
+def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set]) -> pd.DataFrame:
     activity_key = 'concept:name'
     resource_key = 'org:resource'
     start_time_key = 'start_timestamp'
     end_time_key = 'time:timestamp'
+    time_format = '%Y-%m-%d %H:%M:%S%z'
 
     case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
     case.reset_index()
@@ -56,14 +65,13 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
     # NOTE: we need 4 consecutive events to identify the ping-pong pattern: A→B→C→D
 
     # tracking two events in past (e.g., in past: A, B, current: C, future: D)
-    before_previous_event: Optional[pd.Series] = None
+    pre_pre_previous_event: Optional[pd.Series] = None
+    pre_previous_event: Optional[pd.Series] = None
     previous_event: Optional[pd.Series] = None
-    # tracking if A and C have the same activity and resource
-    first_pair_same: bool = False
-    # tracking if B and D have the same activity and resource
-    second_pair_same: bool = False
+
     # collecting all ping-pongs
-    ping_pongs = []
+    ping_pongs = {}
+
     for i in case.index:
         event = case.loc[i]  # current event C
 
@@ -71,45 +79,73 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
             previous_event = event  # tracking the previous event B
             continue
 
-        # parallelism identification
-        parallel: bool = parallel_activities.get(event[activity_key], False)
-
-        # handoff identification
-        consecutive_timestamps = previous_event[end_time_key] <= event[start_time_key]
-        activity_changed = previous_event[activity_key] != event[activity_key]
-        resource_changed = previous_event[resource_key] != event[resource_key]
-        handoff_occurred = False
-        if consecutive_timestamps and activity_changed and resource_changed and not parallel:
-            handoff_occurred = True
-
-        if not handoff_occurred or before_previous_event is None:
-            before_previous_event = previous_event  # tracking the event before previous A
-            previous_event = event  # tracking the previous event B
+        if pre_previous_event is None:
+            pre_previous_event = previous_event
+            previous_event = event
             continue
 
-        # evaluating pairs: A and C, B and D
-        same_activity = before_previous_event[activity_key] == event[activity_key]
-        same_resource = before_previous_event[resource_key] == event[resource_key]
-        if same_activity and same_resource and not first_pair_same:
-            first_pair_same = True
-        elif same_activity and same_resource and first_pair_same:
-            second_pair_same = True
+        if pre_pre_previous_event is None:
+            pre_pre_previous_event = pre_previous_event
+            pre_previous_event = previous_event
+            previous_event = event
+            continue
 
-        # ping-pong identification
-        if first_pair_same and second_pair_same:
-            ping_pongs.append({
+        # now all 4 events are populated
+
+        # skipping parallel events
+        parallel: bool = _is_parallel(pre_pre_previous_event[activity_key], pre_previous_event[activity_key],
+                                      parallel_activities) or \
+                         _is_parallel(pre_previous_event[activity_key], previous_event[activity_key],
+                                      parallel_activities) or \
+                         _is_parallel(previous_event[activity_key], event[activity_key], parallel_activities)
+
+        consecutive_timestamps: bool = pre_pre_previous_event[end_time_key] <= pre_previous_event[start_time_key] and \
+                                       pre_previous_event[end_time_key] <= previous_event[start_time_key] and \
+                                       previous_event[end_time_key] <= event[start_time_key]
+
+        activities_match: bool = pre_pre_previous_event[activity_key] == previous_event[activity_key] and \
+                                 pre_previous_event[activity_key] == event[activity_key]
+
+        resources_match: bool = pre_pre_previous_event[resource_key] == previous_event[resource_key] and \
+                                pre_previous_event[resource_key] == event[resource_key]
+
+        if consecutive_timestamps and activities_match and resources_match and not parallel:
+            ping_pong_key = f"{previous_event[activity_key]}:{previous_event[resource_key]}:{event[activity_key]}:{event[resource_key]}"
+
+            # converting timestamps' strings to pd.Timestamp
+            if isinstance(previous_event[start_time_key], str):
+                previous_event[start_time_key] = pd.to_datetime(previous_event[start_time_key])
+            if isinstance(pre_previous_event[end_time_key], str):
+                pre_previous_event[end_time_key] = pd.to_datetime(pre_previous_event[end_time_key])
+            if isinstance(event[start_time_key], str):
+                event[start_time_key] = pd.to_datetime(event[start_time_key])
+            if isinstance(previous_event[end_time_key], str):
+                previous_event[end_time_key] = pd.to_datetime(previous_event[end_time_key])
+
+            step2_handoff_duration = \
+                previous_event[start_time_key].tz_convert(tz='UTC') - \
+                pre_previous_event[end_time_key].tz_convert(tz='UTC')
+            step3_handoff_duration = \
+                event[start_time_key].tz_convert(tz='UTC') - \
+                previous_event[end_time_key].tz_convert(tz='UTC')
+            ping_pong = {
                 'source_activity': previous_event[activity_key],
                 'source_resource': previous_event[resource_key],
                 'destination_activity': event[activity_key],
-                'destination_resource': event[resource_key]
-            })
-            first_pair_same = False
-            second_pair_same = False
+                'destination_resource': event[resource_key],
+                'frequency': 1,
+                'duration': step2_handoff_duration + step3_handoff_duration
+            }
+            if ping_pong_key in ping_pongs:
+                ping_pong['frequency'] = ping_pongs[ping_pong_key]['frequency'] + 1
+                ping_pong['duration'] = ping_pongs[ping_pong_key]['duration'] + ping_pong['duration']
+            ping_pongs[ping_pong_key] = ping_pong
 
-        before_previous_event = previous_event  # tracking the event before previous A
-        previous_event = event  # tracking the previous event B
+        pre_pre_previous_event = pre_previous_event
+        pre_previous_event = previous_event
+        previous_event = event
 
-    return ping_pongs
+    return pd.DataFrame(ping_pongs.values())
 
 
 def _join_per_case_ping_pongs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
