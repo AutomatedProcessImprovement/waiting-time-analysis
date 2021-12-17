@@ -8,5 +8,6 @@
 .idea/
 .pytest_cache/
 .ipynb_checkpoints/
+__pycache__/
 data/
 results/

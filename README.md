@@ -6,6 +6,7 @@ The project presents a tool to identify and calculate waste in a business proces
 
 ```shell
 $ git clone https://github.com/AutomatedProcessImprovement/Waste-Calculation.git waste-calculation
+$ git submodule update --init --recursive
 $ cd waste-calculation
 $ python3 -m venv venv
 $ source venv/bin/activate
