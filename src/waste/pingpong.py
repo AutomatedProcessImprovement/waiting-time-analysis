@@ -11,7 +11,7 @@ import pandas as pd
 from . import core
 
 
-def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
+def identify(log_path: Path, parallel_run=True) -> Optional[pd.DataFrame]:
     click.echo(f'Parallel run: {parallel_run}')
 
     log = core.lifecycle_to_interval(log_path)
@@ -40,7 +40,10 @@ def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
             if result is not None:
                 all_ping_pongs.append(result)
 
-    result = _join_per_case_ping_pongs(all_ping_pongs)  # TODO: finish frequency, duration, score
+    if len(all_ping_pongs) == 0:
+        return None
+
+    result = _join_per_case_ping_pongs(all_ping_pongs)
     result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
     return result
 
@@ -148,10 +151,10 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
     return pd.DataFrame(ping_pongs.values())
 
 
-def _join_per_case_ping_pongs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
+def _join_per_case_ping_pongs(items: list[pd.DataFrame]) -> pd.DataFrame:
     """Joins a list of ping pongs summing up frequency and duration."""
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
-    grouped = pd.concat(handoffs).groupby(columns)
+    grouped = pd.concat(items).groupby(columns)
     result = pd.DataFrame(columns=columns)
     for pair_index, group in grouped:
         source_activity, source_resource, destination_activity, destination_resource = pair_index
