@@ -13,16 +13,16 @@ from waste.core import timezone_aware_subtraction
 def case(assets_path) -> pd.DataFrame:
     case = pd.read_csv(assets_path / 'bimp-example_case_409.csv')
     case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
-    case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
-    return case.sort_values(by='time:timestamp')
+    case[end_timestamp_key] = pd.to_datetime(case[end_timestamp_key])
+    return case.sort_values(by=end_timestamp_key)
 
 
 @pytest.fixture
 def case_enabled(assets_path) -> pd.DataFrame:
     case = pd.read_csv(assets_path / 'bimp-example_case_409_enabled.csv')
     case['start_timestamp'] = pd.to_datetime(case['start_timestamp'])
-    case['time:timestamp'] = pd.to_datetime(case['time:timestamp'])
-    return case.sort_values(by='time:timestamp')
+    case[end_timestamp_key] = pd.to_datetime(case[end_timestamp_key])
+    return case.sort_values(by=end_timestamp_key)
 
 
 def test_get_interval_log(bimp_example_path):
@@ -49,7 +49,7 @@ def test_enabled_timestamps_case(bimp_example_path, case):
     event_log = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
 
     case_409_assign = event_log.query('`lifecycle:transition` == "assign" & `case:concept:name` == "409"')
-    case_409_assign = case_409_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
+    case_409_assign = case_409_assign.rename(columns={end_timestamp_key: 'assign_timestamp'})
     truth = pd.merge(case, case_409_assign[['elementId', 'assign_timestamp']], on='elementId', how='left')
     test_results = core.add_enabled_timestamps(case)
     assert (test_results['enabled_timestamp'] == truth['assign_timestamp']).all()
@@ -65,7 +65,7 @@ def test_enabled_timestamps_all(bimp_example_path):
     concurrent_activities = core.parallel_activities_with_alpha_oracle(log_interval_df)
     for case_id, case in grouped:
         case_with_assign = log_df.query('`lifecycle:transition` == "assign" & `case:concept:name` == @case_id')
-        case_with_assign = case_with_assign.rename(columns={'time:timestamp': 'assign_timestamp'})
+        case_with_assign = case_with_assign.rename(columns={end_timestamp_key: 'assign_timestamp'})
         case_with_enabled = core.add_enabled_timestamps(case, concurrent_activities)
         case_with_assign = case_with_assign.sort_values(by='assign_timestamp')
         case_with_enabled = case_with_enabled.sort_values(by='enabled_timestamp')

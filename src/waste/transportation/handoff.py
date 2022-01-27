@@ -19,17 +19,17 @@ def identify(log: pd.DataFrame, parallel_activities: dict[str, set], parallel_ru
 
 
 def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set], case_id: str):
-    case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
+    case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 
     next_events = case.shift(-1)
-    resource_changed = case['org:resource'] != next_events['org:resource']
-    activity_changed = case['concept:name'] != next_events['concept:name']
-    consecutive_timestamps = case['time:timestamp'] <= next_events['start_timestamp']
+    resource_changed = case[core.RESOURCE_KEY] != next_events[core.RESOURCE_KEY]
+    activity_changed = case[core.ACTIVITY_KEY] != next_events[core.ACTIVITY_KEY]
+    consecutive_timestamps = case[core.END_TIMESTAMP_KEY] <= next_events[core.START_TIMESTAMP_KEY]
 
     not_parallel = pd.Series(index=case.index)
-    prev_activities = case['concept:name']
-    next_activities = next_events['concept:name']
+    prev_activities = case[core.ACTIVITY_KEY]
+    next_activities = next_events[core.ACTIVITY_KEY]
     for (i, pair) in enumerate(zip(prev_activities, next_activities)):
         if pair[0] == pair[1]:
             not_parallel.iat[i] = False
@@ -52,18 +52,18 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
         destination = case.loc[loc + 1]
 
         # duration calculation
-        destination_start = pd.to_datetime(destination['start_timestamp'], utc=True)
-        source_end = pd.to_datetime(source['time:timestamp'], utc=True)
+        destination_start = pd.to_datetime(destination[core.START_TIMESTAMP_KEY], utc=True)
+        source_end = pd.to_datetime(source[core.END_TIMESTAMP_KEY], utc=True)
         duration = destination_start.tz_convert(tz='UTC') - source_end.tz_convert(tz='UTC')
         if duration < pd.Timedelta(0):
             duration = pd.Timedelta(0)
 
         # appending the handoff data
         handoffs = handoffs.append({
-            'source_activity': source['concept:name'],
-            'source_resource': source['org:resource'],
-            'destination_activity': destination['concept:name'],
-            'destination_resource': destination['org:resource'],
+            'source_activity': source[core.ACTIVITY_KEY],
+            'source_resource': source[core.RESOURCE_KEY],
+            'destination_activity': destination[core.ACTIVITY_KEY],
+            'destination_resource': destination[core.RESOURCE_KEY],
             'duration': duration
         }, ignore_index=True)
 

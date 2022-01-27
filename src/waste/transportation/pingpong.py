@@ -1,9 +1,7 @@
-from pathlib import Path
 from typing import Optional, Dict
 
 import click
 import pandas as pd
-
 from waste.core import core
 
 
@@ -25,13 +23,9 @@ def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activi
     return False
 
 
-def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set], case_id: str) -> pd.DataFrame:
-    activity_key = 'concept:name'
-    resource_key = 'org:resource'
-    start_time_key = 'start_timestamp'
-    end_time_key = 'time:timestamp'
-
-    case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
+def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set],
+                                  case_id: str) -> pd.DataFrame:
+    case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 
     # NOTE: we need 4 consecutive events to identify the ping-pong pattern: A→B→C→D
@@ -65,46 +59,47 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
         # now all 4 events are populated
 
         # skipping parallel events
-        parallel: bool = _is_parallel(pre_pre_previous_event[activity_key], pre_previous_event[activity_key],
+        parallel: bool = _is_parallel(pre_pre_previous_event[core.ACTIVITY_KEY], pre_previous_event[core.ACTIVITY_KEY],
                                       parallel_activities) or \
-                         _is_parallel(pre_previous_event[activity_key], previous_event[activity_key],
+                         _is_parallel(pre_previous_event[core.ACTIVITY_KEY], previous_event[core.ACTIVITY_KEY],
                                       parallel_activities) or \
-                         _is_parallel(previous_event[activity_key], event[activity_key], parallel_activities)
+                         _is_parallel(previous_event[core.ACTIVITY_KEY], event[core.ACTIVITY_KEY], parallel_activities)
 
-        consecutive_timestamps: bool = pre_pre_previous_event[end_time_key] <= pre_previous_event[start_time_key] and \
-                                       pre_previous_event[end_time_key] <= previous_event[start_time_key] and \
-                                       previous_event[end_time_key] <= event[start_time_key]
+        consecutive_timestamps: bool = \
+            pre_pre_previous_event[core.END_TIMESTAMP_KEY] <= pre_previous_event[core.START_TIMESTAMP_KEY] and \
+            pre_previous_event[core.END_TIMESTAMP_KEY] <= previous_event[core.START_TIMESTAMP_KEY] and \
+            previous_event[core.END_TIMESTAMP_KEY] <= event[core.START_TIMESTAMP_KEY]
 
-        activities_match: bool = pre_pre_previous_event[activity_key] == previous_event[activity_key] and \
-                                 pre_previous_event[activity_key] == event[activity_key]
+        activities_match: bool = pre_pre_previous_event[core.ACTIVITY_KEY] == previous_event[core.ACTIVITY_KEY] and \
+                                 pre_previous_event[core.ACTIVITY_KEY] == event[core.ACTIVITY_KEY]
 
-        resources_match: bool = pre_pre_previous_event[resource_key] == previous_event[resource_key] and \
-                                pre_previous_event[resource_key] == event[resource_key]
+        resources_match: bool = pre_pre_previous_event[core.RESOURCE_KEY] == previous_event[core.RESOURCE_KEY] and \
+                                pre_previous_event[core.RESOURCE_KEY] == event[core.RESOURCE_KEY]
 
         if consecutive_timestamps and activities_match and resources_match and not parallel:
-            ping_pong_key = f"{previous_event[activity_key]}:{previous_event[resource_key]}:{event[activity_key]}:{event[resource_key]}"
+            ping_pong_key = f"{previous_event[core.ACTIVITY_KEY]}:{previous_event[core.RESOURCE_KEY]}:{event[core.ACTIVITY_KEY]}:{event[core.RESOURCE_KEY]}"
 
             # converting timestamps' strings to pd.Timestamp
-            if isinstance(previous_event[start_time_key], str):
-                previous_event[start_time_key] = pd.to_datetime(previous_event[start_time_key])
-            if isinstance(pre_previous_event[end_time_key], str):
-                pre_previous_event[end_time_key] = pd.to_datetime(pre_previous_event[end_time_key])
-            if isinstance(event[start_time_key], str):
-                event[start_time_key] = pd.to_datetime(event[start_time_key])
-            if isinstance(previous_event[end_time_key], str):
-                previous_event[end_time_key] = pd.to_datetime(previous_event[end_time_key])
+            if isinstance(previous_event[core.START_TIMESTAMP_KEY], str):
+                previous_event[core.START_TIMESTAMP_KEY] = pd.to_datetime(previous_event[core.START_TIMESTAMP_KEY])
+            if isinstance(pre_previous_event[core.END_TIMESTAMP_KEY], str):
+                pre_previous_event[core.END_TIMESTAMP_KEY] = pd.to_datetime(pre_previous_event[core.END_TIMESTAMP_KEY])
+            if isinstance(event[core.START_TIMESTAMP_KEY], str):
+                event[core.START_TIMESTAMP_KEY] = pd.to_datetime(event[core.START_TIMESTAMP_KEY])
+            if isinstance(previous_event[core.END_TIMESTAMP_KEY], str):
+                previous_event[core.END_TIMESTAMP_KEY] = pd.to_datetime(previous_event[core.END_TIMESTAMP_KEY])
 
             step2_handoff_duration = \
-                previous_event[start_time_key].tz_convert(tz='UTC') - \
-                pre_previous_event[end_time_key].tz_convert(tz='UTC')
+                previous_event[core.START_TIMESTAMP_KEY].tz_convert(tz='UTC') - \
+                pre_previous_event[core.END_TIMESTAMP_KEY].tz_convert(tz='UTC')
             step3_handoff_duration = \
-                event[start_time_key].tz_convert(tz='UTC') - \
-                previous_event[end_time_key].tz_convert(tz='UTC')
+                event[core.START_TIMESTAMP_KEY].tz_convert(tz='UTC') - \
+                previous_event[core.END_TIMESTAMP_KEY].tz_convert(tz='UTC')
             ping_pong = {
-                'source_activity': previous_event[activity_key],
-                'source_resource': previous_event[resource_key],
-                'destination_activity': event[activity_key],
-                'destination_resource': event[resource_key],
+                'source_activity': previous_event[core.ACTIVITY_KEY],
+                'source_resource': previous_event[core.RESOURCE_KEY],
+                'destination_activity': event[core.ACTIVITY_KEY],
+                'destination_resource': event[core.RESOURCE_KEY],
                 'frequency': 1,
                 'duration': step2_handoff_duration + step3_handoff_duration
             }

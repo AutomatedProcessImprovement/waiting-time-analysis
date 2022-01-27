@@ -14,6 +14,13 @@ from pm4py.objects.log.util import interval_lifecycle
 from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
 from tqdm import tqdm
 
+END_TIMESTAMP_KEY = 'time:timestamp'
+ACTIVITY_KEY = 'concept:name'
+CASE_KEY = 'case:concept:name'
+RESOURCE_KEY = 'org:resource'
+START_TIMESTAMP_KEY = 'start_timestamp'
+TRANSITION_KEY = 'lifecycle:transition'
+
 
 def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
     log = xes_importer.apply(str(log_path))
@@ -23,22 +30,22 @@ def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
 
 
 def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
-    case = case.sort_values(by=['start_timestamp', 'time:timestamp'])
+    case = case.sort_values(by=[START_TIMESTAMP_KEY, END_TIMESTAMP_KEY])
 
     def _preprocess_case(case: pd.DataFrame):
         # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
-        case['time:timestamp'] = case['time:timestamp'] - pd.Timedelta('1 us')
+        case[END_TIMESTAMP_KEY] = case[END_TIMESTAMP_KEY] - pd.Timedelta('1 us')
         return case
 
     def _postprocess_case(case: pd.DataFrame):
         # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
-        case['time:timestamp'] = case['time:timestamp'] + pd.Timedelta('1 us')
+        case[END_TIMESTAMP_KEY] = case[END_TIMESTAMP_KEY] + pd.Timedelta('1 us')
         return case
 
     case = _preprocess_case(case)
 
-    params = {concurrent_activities_get.Parameters.TIMESTAMP_KEY: "time:timestamp",
-              concurrent_activities_get.Parameters.START_TIMESTAMP_KEY: "start_timestamp"}
+    params = {concurrent_activities_get.Parameters.TIMESTAMP_KEY: END_TIMESTAMP_KEY,
+              concurrent_activities_get.Parameters.START_TIMESTAMP_KEY: START_TIMESTAMP_KEY}
     concurrent_activities = concurrent_activities_get.apply(case, parameters=params)
     result = [activities for activities in concurrent_activities]
 
@@ -49,10 +56,10 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
 def add_enabled_timestamps(event_log: pd.DataFrame,
                            concurrent_activities: Optional[List[tuple]] = None) -> pd.DataFrame:
     enabled_timestamp_key = 'enabled_timestamp'
-    start_timestamp_key = 'start_timestamp'
-    end_timestamp_key = 'time:timestamp'
+    start_timestamp_key = START_TIMESTAMP_KEY
+    end_timestamp_key = END_TIMESTAMP_KEY
 
-    event_log = event_log.sort_values(by='time:timestamp')
+    event_log = event_log.sort_values(by=end_timestamp_key)
 
     # default enabled timestamps are start timestamps
     event_log[enabled_timestamp_key] = event_log[start_timestamp_key]
@@ -61,7 +68,7 @@ def add_enabled_timestamps(event_log: pd.DataFrame,
         concurrent_activities = get_concurrent_activities(event_log)  # NOTE: per case concurrency identification
 
     for i in event_log.index:
-        activity_name = event_log.loc[i]['concept:name']
+        activity_name = event_log.loc[i][ACTIVITY_KEY]
         start = event_log.loc[i][start_timestamp_key]
 
         concurrent_activities_names = None
@@ -87,12 +94,12 @@ def add_enabled_timestamps(event_log: pd.DataFrame,
 
 def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, set]:
     column_names = EventLogIDs(
-        case='case:concept:name',
-        activity='concept:name',
-        start_timestamp='start_timestamp',
-        end_timestamp='time:timestamp',
-        resource='org:resource',
-        lifecycle='lifecycle:transition'
+        case=CASE_KEY,
+        activity=ACTIVITY_KEY,
+        start_timestamp=START_TIMESTAMP_KEY,
+        end_timestamp=END_TIMESTAMP_KEY,
+        resource=RESOURCE_KEY,
+        lifecycle=TRANSITION_KEY
     )
     config = Configuration(
         log_ids=column_names,
@@ -107,12 +114,12 @@ def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, se
 
 
 def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
-    df = df.sort_values(by=['start_timestamp', 'time:timestamp', 'case:concept:name'])
-    activities_names = df['concept:name'].unique()
+    df = df.sort_values(by=[START_TIMESTAMP_KEY, END_TIMESTAMP_KEY, CASE_KEY])
+    activities_names = df[ACTIVITY_KEY].unique()
     matrix = pd.DataFrame(0, index=activities_names, columns=activities_names)
 
     # per group
-    df_grouped = df.groupby(by='case:concept:name')
+    df_grouped = df.groupby(by=CASE_KEY)
     for case_id, case in df_grouped:
         case_shifted = case.shift(-1)
         # dropping N/A
@@ -122,8 +129,8 @@ def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
             raise Exception("Arrays' sizes must be equal")
 
         for i in range(len(activities)):
-            if activities.iloc[i]['time:timestamp'] < case_shifted.iloc[i]['time:timestamp']:
-                (row, column) = (activities['concept:name'].iloc[i], case_shifted['concept:name'].iloc[i])
+            if activities.iloc[i][END_TIMESTAMP_KEY] < case_shifted.iloc[i][END_TIMESTAMP_KEY]:
+                (row, column) = (activities[ACTIVITY_KEY].iloc[i], case_shifted[ACTIVITY_KEY].iloc[i])
                 matrix.at[row, column] += 1
 
     parallel_activities = set()
@@ -143,7 +150,7 @@ def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
     parallel_activities = set()
 
     # per group
-    df_grouped = df.groupby(by='case:concept:name')
+    df_grouped = df.groupby(by=CASE_KEY)
     for case_id, case in df_grouped:
         activities = get_concurrent_activities(case)
         if len(activities) == 0:
@@ -161,15 +168,16 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
 
 
-def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identify_fn_per_case, join_fn, parallel_run=True) -> Optional[pd.DataFrame]:
-    log_grouped = log.groupby(by='case:concept:name')
+def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identify_fn_per_case, join_fn,
+                  parallel_run=True) -> Optional[pd.DataFrame]:
+    log_grouped = log.groupby(by=CASE_KEY)
     all_items = []
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in tqdm(log_grouped, desc='submitting tasks for concurrent execution'):
-                case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+                case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
                 handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id)
                 handles.append(handle)
 
@@ -180,7 +188,7 @@ def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identi
                 all_items.append(result)
     else:
         for (case_id, case) in tqdm(log_grouped, desc='processing cases'):
-            case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+            case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
             result = identify_fn_per_case(case, parallel_activities, case_id)
             if result is not None:
                 all_items.append(result)
