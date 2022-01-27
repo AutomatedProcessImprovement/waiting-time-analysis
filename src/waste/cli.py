@@ -2,45 +2,46 @@ from pathlib import Path
 
 import click
 
-from waste import handoff, pingpong as pp
+from . import transportation as tp
 
 
 @click.group()
 def main():
+    """Grouping commands under main group."""
     pass
 
 
 @main.command()
-@click.option('-l', '--log_path', default=None, required=True, type=Path, help='Path to an event log in XES-format.')
+@click.option('-l', '--log_path', default=None, required=True, type=Path,
+              help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
-@click.option('-p', '--parallel', is_flag=True, help='Run the tool using all available cores in parallel.')
-def handoff(log_path, output_dir, parallel):
-    _call_cmd(log_path, output_dir, parallel, handoff.identify, '_handoff', '.csv')
+@click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
+              help='Run the tool using all available cores in parallel.')
+def transportation(log_path: Path, output_dir: Path, parallel: bool):
+    result = tp.identify(log_path, parallel)
 
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-@main.command()
-@click.option('-l', '--log_path', default=None, required=True, type=Path, help='Path to an event log in XES-format.')
-@click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
-              help='Path to an output directory where statistics will be saved.')
-@click.option('-p', '--parallel', is_flag=True, help='Run the tool using all available cores in parallel.')
-def pingpong(log_path, output_dir, parallel):
-    _call_cmd(log_path, output_dir, parallel, pp.identify, '_pingpong', '.csv')
+    extension_suffix = '.csv'
 
+    # handoff
+    if result['handoff'] is not None:
+        handoff_output_path = output_dir / (log_path.stem + '_handoff')
+        handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
+        print(f'Saving handoff report to {handoff_csv_path}')
+        result['handoff'].to_csv(handoff_csv_path, index=False)
+    else:
+        print('No handoffs found')
 
-def _call_cmd(log_path, output_dir, parallel, fn, name_suffix, extension_suffix):
-    log_path = Path(log_path)
-    output_dir = Path(output_dir)
-
-    result = fn(log_path, parallel)
-    if result is None:
-        print('Empty result')
-        return
-
-    output_path = output_dir / (log_path.stem + name_suffix)
-    csv_path = output_path.with_suffix(extension_suffix)
-    print(f'Saving results to {csv_path}')
-    result.to_csv(csv_path, index=False)
+    # pingpong
+    if result['pingpong'] is not None:
+        pingpong_output_path = output_dir / (log_path.stem + '_pingpong')
+        pingpong_csv_path = pingpong_output_path.with_suffix(extension_suffix)
+        print(f'Saving pingpong report to {pingpong_csv_path}')
+        result['pingpong'].to_csv(pingpong_csv_path, index=False)
+    else:
+        print('No pingpongs found')
 
 
 if __name__ == '__main__':

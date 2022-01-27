@@ -3,7 +3,7 @@ from config import Configuration, DEFAULT_XES_IDS, ConcurrencyOracleType, Resour
 from data_frame.concurrency_oracle import HeuristicsConcurrencyOracle as DFHeuristics
 from event_log.concurrency_oracle import HeuristicsConcurrencyOracle as ELHeuristics
 from event_log_readers import read_event_log
-from waste import core
+import waste
 
 
 def test_pm4py_heuristics(assets_path):
@@ -26,7 +26,7 @@ def test_pm4py_heuristics(assets_path):
 
 def test_data_frame_heuristics(assets_path):
     log_path = assets_path / 'Production.xes'
-    log = core.lifecycle_to_interval(log_path)
+    log = waste.core.lifecycle_to_interval(log_path)
 
     column_names = EventLogIDs(
         case='case:concept:name',
