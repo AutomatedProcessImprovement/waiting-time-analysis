@@ -4,7 +4,7 @@ from typing import Dict
 import click
 import pandas as pd
 
-from ..core import core
+from waste.core import core
 
 
 def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
