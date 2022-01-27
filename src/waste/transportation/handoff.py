@@ -4,7 +4,7 @@ from typing import Dict
 import click
 import pandas as pd
 
-from waste.core import core
+from waste import core
 
 
 def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
@@ -12,12 +12,12 @@ def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
     result = core.identify_main(
         log_path=log_path,
         identify_fn_per_case=_identify_handoffs_per_case,
-        join_fn=_join_per_case_handoffs,
+        join_fn=core.join_per_case_items,
         parallel_run=parallel_run)
     return result
 
 
-def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set]):
+def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set], case_id: str):
     case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
     case.reset_index()
 
@@ -94,25 +94,6 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
                          & handoff_with_frequency['destination_resource'].isin(starts_ends_values))
     handoff_with_frequency = handoff_with_frequency[starts_and_ends == False]
 
+    handoff_with_frequency['case_id'] = case_id
+
     return handoff_with_frequency
-
-
-def _join_per_case_handoffs(handoffs: list[pd.DataFrame]) -> pd.DataFrame:
-    """Joins a list of handoffs summing up frequency and duration."""
-    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
-    grouped = pd.concat(handoffs).groupby(columns)
-    result = pd.DataFrame(columns=columns)
-    for pair_index, group in grouped:
-        source_activity, source_resource, destination_activity, destination_resource = pair_index
-        group_duration: pd.Timedelta = group['duration'].sum()
-        group_frequency: float = group['frequency'].sum()
-        result = result.append({
-            'source_activity': source_activity,
-            'source_resource': source_resource,
-            'destination_activity': destination_activity,
-            'destination_resource': destination_resource,
-            'duration_sum': group_duration,
-            'frequency': group_frequency
-        }, ignore_index=True)
-    result.reset_index(drop=True, inplace=True)
-    return result

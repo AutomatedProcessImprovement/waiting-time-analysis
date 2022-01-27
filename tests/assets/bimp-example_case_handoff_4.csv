@@ -1,8 +1,8 @@
-,source_activity,source_resource,destination_activity,destination_resource,duration,frequency
-0,Assess application,Credit Officer-000001,Notify rejection,Credit Officer-000002,0 days 00:35:03.973001,1.0
-1,Notify rejection,Credit Officer-000002,Receive customer feedback,System-000001,0 days 00:00:00.000001,1.0
-2,Receive customer feedback,System-000001,Credit  application  processed,NA,0 days 00:00:00.000001,1.0
-3,Credit application received,NA,Check credit history,Clerk-000001,0 days 00:07:10.032001,1.0
-4,Credit application received,NA,Check income sources,Clerk-000002,0 days 00:18:33.275001,1.0
-5,Check credit history,Clerk-000001,Assess application,Credit Officer-000001,0 days 01:22:52.976001,1.0
-6,Check income sources,Clerk-000002,Assess application,Credit Officer-000001,0 days 01:01:35.926001,1.0
+,source_activity,source_resource,destination_activity,destination_resource,duration,frequency,case_id
+0,Assess application,Credit Officer-000001,Notify rejection,Credit Officer-000002,0 days 00:35:03.973001,1.0,1
+1,Notify rejection,Credit Officer-000002,Receive customer feedback,System-000001,0 days 00:00:00.000001,1.0,1
+2,Receive customer feedback,System-000001,Credit  application  processed,NA,0 days 00:00:00.000001,1.0,1
+3,Credit application received,NA,Check credit history,Clerk-000001,0 days 00:07:10.032001,1.0,1
+4,Credit application received,NA,Check income sources,Clerk-000002,0 days 00:18:33.275001,1.0,1
+5,Check credit history,Clerk-000001,Assess application,Credit Officer-000001,0 days 01:22:52.976001,1.0,1
+6,Check income sources,Clerk-000002,Assess application,Credit Officer-000001,0 days 01:01:35.926001,1.0,1

@@ -172,7 +172,7 @@ def identify_main(log_path: Path, identify_fn_per_case, join_fn, parallel_run=Tr
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in log_grouped:
                 case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
-                handle = executor.submit(identify_fn_per_case, case, parallel_activities)
+                handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id)
                 handles.append(handle)
 
         for h in handles:
@@ -183,7 +183,7 @@ def identify_main(log_path: Path, identify_fn_per_case, join_fn, parallel_run=Tr
     else:
         for (case_id, case) in log_grouped:
             case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
-            result = identify_fn_per_case(case, parallel_activities)
+            result = identify_fn_per_case(case, parallel_activities, case_id)
             if result is not None:
                 all_items.append(result)
 
@@ -192,4 +192,27 @@ def identify_main(log_path: Path, identify_fn_per_case, join_fn, parallel_run=Tr
 
     result: pd.DataFrame = join_fn(all_items)
     result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
+    return result
+
+
+def join_per_case_items(items: list[pd.DataFrame]) -> pd.DataFrame:
+    """Joins a list of items summing up frequency and duration."""
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
+    grouped = pd.concat(items).groupby(columns)
+    result = pd.DataFrame(columns=columns)
+    for pair_index, group in grouped:
+        source_activity, source_resource, destination_activity, destination_resource = pair_index
+        group_duration: pd.Timedelta = group['duration'].sum()
+        group_frequency: float = group['frequency'].sum()
+        group_case_id: str = ','.join(group['case_id'].astype(str).unique())
+        result = result.append({
+            'source_activity': source_activity,
+            'source_resource': source_resource,
+            'destination_activity': destination_activity,
+            'destination_resource': destination_resource,
+            'duration_sum': group_duration,
+            'frequency': group_frequency,
+            'cases': group_case_id
+        }, ignore_index=True)
+    result.reset_index(drop=True, inplace=True)
     return result

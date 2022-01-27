@@ -1,9 +1,10 @@
+from typing import List
+
 import pandas as pd
 import pytest
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
-
 from waste import core
 from waste.core import timezone_aware_subtraction
 
@@ -89,3 +90,19 @@ def test_timezone_aware_subtraction():
     df1 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 13:00+0200')]})
     df2 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 14:00+0300')]})
     assert (timezone_aware_subtraction(df1, df2, 'timestamp') == pd.Series([pd.Timedelta(0)])).all()
+
+
+@pytest.fixture
+def handoffs(assets_path) -> List[pd.DataFrame]:
+    return [
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_1.csv'),
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_2.csv'),
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_3.csv'),
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_4.csv'),
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_5.csv'),
+        pd.read_csv(assets_path / 'bimp-example_case_handoff_6.csv'),
+    ]
+
+def test_join_handoffs(handoffs):
+    result = core.join_per_case_items(handoffs)
+    assert result is not None and not result.empty
