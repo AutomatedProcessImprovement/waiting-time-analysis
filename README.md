@@ -17,9 +17,9 @@ $ pip install -e .
 ## Getting Started
 
 ```shell
-$ waste --log_path data/PurschasingExample.xes
+$ waste transportation -l data/PurschasingExample.xes -o results
 ```
 
 The tool produces statistics in the Excel-format and saves it in the folder where the tool has been executed by default. 
 
-See `waste --help` for more CLI options.
+See `waste --help` and `waste <cmd> --help` for more help.
