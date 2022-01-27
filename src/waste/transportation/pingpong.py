@@ -7,10 +7,11 @@ import pandas as pd
 from waste.core import core
 
 
-def identify(log_path: Path, parallel_run=True) -> Optional[pd.DataFrame]:
-    click.echo(f'Parallel run: {parallel_run}')
+def identify(log: pd.DataFrame, parallel_activities: dict[str, set], parallel_run=True) -> Optional[pd.DataFrame]:
+    click.echo(f'Ping-pong identification. Parallel run: {parallel_run}')
     result = core.identify_main(
-        log_path=log_path,
+        log=log,
+        parallel_activities=parallel_activities,
         identify_fn_per_case=_identify_ping_pongs_per_case,
         join_fn=core.join_per_case_items,
         parallel_run=parallel_run)

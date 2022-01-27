@@ -4,11 +4,15 @@ import pandas as pd
 
 from . import handoff
 from . import pingpong
+from ..core import core
 
 
 def identify(log_path: Path, parallel_run=True) -> dict:
-    handoff_report = handoff.identify(log_path, parallel_run)
-    pingpong_report = pingpong.identify(log_path, parallel_run)
+    log = core.lifecycle_to_interval(log_path)
+    parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
+
+    handoff_report = handoff.identify(log, parallel_activities, parallel_run)
+    pingpong_report = pingpong.identify(log, parallel_activities, parallel_run)
 
     # identifying common records for both reports
     index_columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']

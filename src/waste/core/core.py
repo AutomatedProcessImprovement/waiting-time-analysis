@@ -12,6 +12,7 @@ from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
+from tqdm import tqdm
 
 
 def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
@@ -160,28 +161,25 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
 
 
-def identify_main(log_path: Path, identify_fn_per_case, join_fn, parallel_run=True) -> Optional[pd.DataFrame]:
-    log = lifecycle_to_interval(log_path)
-    parallel_activities = parallel_activities_with_heuristic_oracle(log)
-
+def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identify_fn_per_case, join_fn, parallel_run=True) -> Optional[pd.DataFrame]:
     log_grouped = log.groupby(by='case:concept:name')
     all_items = []
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-            for (case_id, case) in log_grouped:
+            for (case_id, case) in tqdm(log_grouped, desc='submitting tasks for concurrent execution'):
                 case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
                 handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id)
                 handles.append(handle)
 
-        for h in handles:
+        for h in tqdm(handles, desc='waiting for tasks to finish'):
             done = h.done()
             result = h.result()
             if done and not result.empty:
                 all_items.append(result)
     else:
-        for (case_id, case) in log_grouped:
+        for (case_id, case) in tqdm(log_grouped, desc='processing cases'):
             case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
             result = identify_fn_per_case(case, parallel_activities, case_id)
             if result is not None:
