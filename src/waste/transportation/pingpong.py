@@ -12,7 +12,7 @@ def identify(log_path: Path, parallel_run=True) -> Optional[pd.DataFrame]:
     result = core.identify_main(
         log_path=log_path,
         identify_fn_per_case=_identify_ping_pongs_per_case,
-        join_fn=_join_per_case_ping_pongs,
+        join_fn=core.join_per_case_items,
         parallel_run=parallel_run)
     return result
 
@@ -24,12 +24,11 @@ def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activi
     return False
 
 
-def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set]) -> pd.DataFrame:
+def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set], case_id: str) -> pd.DataFrame:
     activity_key = 'concept:name'
     resource_key = 'org:resource'
     start_time_key = 'start_timestamp'
     end_time_key = 'time:timestamp'
-    time_format = '%Y-%m-%d %H:%M:%S%z'
 
     case = case.sort_values(by=['time:timestamp', 'start_timestamp']).copy()
     case.reset_index()
@@ -117,25 +116,7 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
         pre_previous_event = previous_event
         previous_event = event
 
-    return pd.DataFrame(ping_pongs.values())
+    df = pd.DataFrame(ping_pongs.values())
+    df['case_id'] = case_id
 
-
-def _join_per_case_ping_pongs(items: list[pd.DataFrame]) -> pd.DataFrame:
-    """Joins a list of ping pongs summing up frequency and duration."""
-    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
-    grouped = pd.concat(items).groupby(columns)
-    result = pd.DataFrame(columns=columns)
-    for pair_index, group in grouped:
-        source_activity, source_resource, destination_activity, destination_resource = pair_index
-        group_duration: pd.Timedelta = group['duration'].sum()
-        group_frequency: float = group['frequency'].sum()
-        result = result.append({
-            'source_activity': source_activity,
-            'source_resource': source_resource,
-            'destination_activity': destination_activity,
-            'destination_resource': destination_resource,
-            'duration_sum': group_duration,
-            'frequency': group_frequency
-        }, ignore_index=True)
-    result.reset_index(drop=True, inplace=True)
-    return result
+    return df

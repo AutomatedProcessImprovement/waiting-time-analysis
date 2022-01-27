@@ -16,14 +16,15 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(60.0, 'seconds')}]
+                 'duration': pd.to_timedelta(60.0, 'seconds'),
+                 'case_id': '1'}]
             )
         },
         {
             'name': 'B',
             'log_path': assets_path / 'PurchasingExample.xes',
             'case_path': assets_path / 'ping_pong_case_fake.csv',
-            'expected': pd.DataFrame([])
+            'expected': pd.DataFrame(columns=['case_id'])
         },
         {
             'name': 'C',
@@ -35,13 +36,15 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(60.0, 'seconds')},
+                 'duration': pd.to_timedelta(60.0, 'seconds'),
+                 'case_id': '1'},
                 {'source_activity': 'Approve Purchase Order for payment',
                  'source_resource': 'Karel de Groot',
                  'destination_activity': 'Send Invoice',
                  'destination_resource': 'Kiu Kan',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(0, 'seconds')}])
+                 'duration': pd.to_timedelta(0, 'seconds'),
+                 'case_id': '1'}])
         },
         {
             'name': 'D',
@@ -53,13 +56,15 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 2,
-                 'duration': pd.to_timedelta(3780.0, 'seconds')},
+                 'duration': pd.to_timedelta(3780.0, 'seconds'),
+                 'case_id': '1'},
                 {'source_activity': 'Analyze Request for Quotation',
                  'source_resource': 'Karel de Groot',
                  'destination_activity': 'Create Request for Quotation',
                  'destination_resource': 'Kim Passa',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(3720.0, 'seconds')}])
+                 'duration': pd.to_timedelta(3720.0, 'seconds'),
+                 'case_id': '1'}])
         },
     ]
 
@@ -75,7 +80,7 @@ def test_ping_pong_identification(assets_path):
         case = pd.read_csv(case_path)
         assert case is not None and len(case) > 0
 
-        result = pingpong._identify_ping_pongs_per_case(case, parallel_activities)
+        result = pingpong._identify_ping_pongs_per_case(case, parallel_activities, case_id='1')
         assert ((result.reset_index() == expected.reset_index()).all()).all()
 
 
