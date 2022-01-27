@@ -1,46 +1,19 @@
-import concurrent.futures
-import multiprocessing
 from pathlib import Path
 from typing import Dict
 
 import click
-import numpy as np
 import pandas as pd
 
-from . import core
+from ..core import core
 
 
 def identify(log_path: Path, parallel_run=True) -> pd.DataFrame:
     click.echo(f'Parallel run: {parallel_run}')
-
-    log = core.lifecycle_to_interval(log_path)
-    parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
-
-    log_grouped = log.groupby(by='case:concept:name')
-    all_handoffs = []
-    if parallel_run:
-        n_cores = multiprocessing.cpu_count() - 1
-        handles = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-            for (case_id, case) in log_grouped:
-                case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
-                handle = executor.submit(_identify_handoffs_per_case, case, parallel_activities)
-                handles.append(handle)
-
-        for h in handles:
-            done = h.done()
-            result = h.result()
-            if done and not result.empty:
-                all_handoffs.append(result)
-    else:
-        for (case_id, case) in log_grouped:
-            case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
-            result = _identify_handoffs_per_case(case, parallel_activities)
-            if result is not None:
-                all_handoffs.append(result)
-
-    result = _join_per_case_handoffs(all_handoffs)
-    result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
+    result = core.identify_main(
+        log_path=log_path,
+        identify_fn_per_case=_identify_handoffs_per_case,
+        join_fn=_join_per_case_handoffs,
+        parallel_run=parallel_run)
     return result
 
 

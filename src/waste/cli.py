@@ -2,7 +2,8 @@ from pathlib import Path
 
 import click
 
-from waste import handoff, pingpong as pp
+from . import handoff as ho
+from . import pingpong as pp
 
 
 @click.group()
@@ -11,19 +12,23 @@ def main():
 
 
 @main.command()
-@click.option('-l', '--log_path', default=None, required=True, type=Path, help='Path to an event log in XES-format.')
+@click.option('-l', '--log_path', default=None, required=True, type=Path,
+              help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
-@click.option('-p', '--parallel', is_flag=True, help='Run the tool using all available cores in parallel.')
+@click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
+              help='Run the tool using all available cores in parallel.')
 def handoff(log_path, output_dir, parallel):
-    _call_cmd(log_path, output_dir, parallel, handoff.identify, '_handoff', '.csv')
+    _call_cmd(log_path, output_dir, parallel, ho.identify, '_handoff', '.csv')
 
 
 @main.command()
-@click.option('-l', '--log_path', default=None, required=True, type=Path, help='Path to an event log in XES-format.')
+@click.option('-l', '--log_path', default=None, required=True, type=Path,
+              help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
-@click.option('-p', '--parallel', is_flag=True, help='Run the tool using all available cores in parallel.')
+@click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
+              help='Run the tool using all available cores in parallel.')
 def pingpong(log_path, output_dir, parallel):
     _call_cmd(log_path, output_dir, parallel, pp.identify, '_pingpong', '.csv')
 

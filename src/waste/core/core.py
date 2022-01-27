@@ -1,15 +1,17 @@
+import concurrent.futures
+import multiprocessing
 from pathlib import Path
 from typing import Tuple, List, Optional, Dict
 
+import numpy as np
 import pandas as pd
+from config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
+    HeuristicsThresholds, EventLogIDs
+from data_frame.concurrency_oracle import HeuristicsConcurrencyOracle
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
 from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
-
-from config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs
-from data_frame.concurrency_oracle import HeuristicsConcurrencyOracle
 
 
 def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
@@ -43,7 +45,8 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
     return result
 
 
-def add_enabled_timestamps(event_log: pd.DataFrame, concurrent_activities: Optional[List[tuple]] = None) -> pd.DataFrame:
+def add_enabled_timestamps(event_log: pd.DataFrame,
+                           concurrent_activities: Optional[List[tuple]] = None) -> pd.DataFrame:
     enabled_timestamp_key = 'enabled_timestamp'
     start_timestamp_key = 'start_timestamp'
     end_timestamp_key = 'time:timestamp'
@@ -155,3 +158,38 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     if df2_col_name is None:
         df2_col_name = df1_col_name
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
+
+
+def identify_main(log_path: Path, identify_fn_per_case, join_fn, parallel_run=True) -> Optional[pd.DataFrame]:
+    log = lifecycle_to_interval(log_path)
+    parallel_activities = parallel_activities_with_heuristic_oracle(log)
+
+    log_grouped = log.groupby(by='case:concept:name')
+    all_items = []
+    if parallel_run:
+        n_cores = multiprocessing.cpu_count() - 1
+        handles = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+            for (case_id, case) in log_grouped:
+                case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+                handle = executor.submit(identify_fn_per_case, case, parallel_activities)
+                handles.append(handle)
+
+        for h in handles:
+            done = h.done()
+            result = h.result()
+            if done and not result.empty:
+                all_items.append(result)
+    else:
+        for (case_id, case) in log_grouped:
+            case = case.sort_values(by=['time:timestamp', 'start_timestamp'])
+            result = identify_fn_per_case(case, parallel_activities)
+            if result is not None:
+                all_items.append(result)
+
+    if len(all_items) == 0:
+        return None
+
+    result: pd.DataFrame = join_fn(all_items)
+    result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
+    return result
