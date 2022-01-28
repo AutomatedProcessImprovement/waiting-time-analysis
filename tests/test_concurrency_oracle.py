@@ -32,7 +32,7 @@ def test_data_frame_heuristics(assets_path):
         case='case:concept:name',
         activity='concept:name',
         start_timestamp='start_timestamp',
-        end_timestamp=end_timestamp_key,
+        end_timestamp='time:timestamp',
         resource='org:resource',
         lifecycle='lifecycle:transition'
     )
