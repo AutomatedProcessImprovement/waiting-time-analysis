@@ -52,14 +52,14 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
         destination = case.loc[loc + 1]
 
         # duration calculation
-        destination_start = pd.to_datetime(destination[core.START_TIMESTAMP_KEY], utc=True)
-        source_end = pd.to_datetime(source[core.END_TIMESTAMP_KEY], utc=True)
+        destination_start = destination[core.START_TIMESTAMP_KEY]
+        source_end = destination[core.ENABLED_TIMESTAMP_KEY]
         duration = destination_start.tz_convert(tz='UTC') - source_end.tz_convert(tz='UTC')
         if duration < pd.Timedelta(0):
             duration = pd.Timedelta(0)
 
         # appending the handoff data
-        handoffs = handoffs.append({
+        handoffs = handoffs.append({  # TODO: change to pd.concat
             'source_activity': source[core.ACTIVITY_KEY],
             'source_resource': source[core.RESOURCE_KEY],
             'destination_activity': destination[core.ACTIVITY_KEY],
@@ -78,7 +78,7 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
     ])
     for group in handoff_grouped:
         pair, records = group
-        handoff_with_frequency = handoff_with_frequency.append(pd.Series({
+        handoff_with_frequency = handoff_with_frequency.append(pd.Series({  # TODO: change to pd.concat
             'source_activity': pair[0],
             'source_resource': pair[1],
             'destination_activity': pair[2],
