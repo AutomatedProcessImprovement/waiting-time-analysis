@@ -2,6 +2,7 @@ from typing import Optional, Dict
 
 import click
 import pandas as pd
+
 from waste.core import core
 
 
@@ -24,7 +25,7 @@ def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activi
 
 
 def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set],
-                                  case_id: str) -> pd.DataFrame:
+                                  case_id: str, enabled_on: bool = True) -> pd.DataFrame:
     case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 
@@ -78,10 +79,16 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
 
         if consecutive_timestamps and activities_match and resources_match and not parallel:
             ping_pong_key = f"{previous_event[core.ACTIVITY_KEY]}:{previous_event[core.RESOURCE_KEY]}:{event[core.ACTIVITY_KEY]}:{event[core.RESOURCE_KEY]}"
-            step2_handoff_duration = \
-                previous_event[core.START_TIMESTAMP_KEY] - previous_event[core.ENABLED_TIMESTAMP_KEY]
-            step3_handoff_duration = \
-                event[core.START_TIMESTAMP_KEY] - event[core.ENABLED_TIMESTAMP_KEY]
+            if enabled_on:
+                step2_handoff_duration = \
+                    previous_event[core.START_TIMESTAMP_KEY] - previous_event[core.ENABLED_TIMESTAMP_KEY]
+                step3_handoff_duration = \
+                    event[core.START_TIMESTAMP_KEY] - event[core.ENABLED_TIMESTAMP_KEY]
+            else:
+                step2_handoff_duration = \
+                    previous_event[core.START_TIMESTAMP_KEY] - pre_previous_event[core.END_TIMESTAMP_KEY]
+                step3_handoff_duration = \
+                    event[core.START_TIMESTAMP_KEY] - previous_event[core.END_TIMESTAMP_KEY]
             ping_pong = {
                 'source_activity': previous_event[core.ACTIVITY_KEY],
                 'source_resource': previous_event[core.RESOURCE_KEY],

@@ -18,7 +18,8 @@ def identify(log: pd.DataFrame, parallel_activities: dict[str, set], parallel_ru
     return result
 
 
-def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set], case_id: str):
+def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set],
+                                case_id: str, enabled_on: bool = True):
     case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 
@@ -53,8 +54,11 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
 
         # duration calculation
         destination_start = destination[core.START_TIMESTAMP_KEY]
-        source_end = destination[core.ENABLED_TIMESTAMP_KEY]
-        duration = destination_start.tz_convert(tz='UTC') - source_end.tz_convert(tz='UTC')
+        if enabled_on:
+            source_end = destination[core.ENABLED_TIMESTAMP_KEY]
+        else:
+            source_end = source[core.END_TIMESTAMP_KEY]
+        duration = destination_start - source_end
         if duration < pd.Timedelta(0):
             duration = pd.Timedelta(0)
 
