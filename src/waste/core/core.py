@@ -5,9 +5,9 @@ from typing import Tuple, List, Optional, Dict
 
 import numpy as np
 import pandas as pd
-from config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs
-from data_frame.concurrency_oracle import HeuristicsConcurrencyOracle
+from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
+    HeuristicsThresholds, EventLogIDs, DEFAULT_XES_IDS
+from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
@@ -19,6 +19,7 @@ ACTIVITY_KEY = 'concept:name'
 CASE_KEY = 'case:concept:name'
 RESOURCE_KEY = 'org:resource'
 START_TIMESTAMP_KEY = 'start_timestamp'
+ENABLED_TIMESTAMP_KEY = 'enabled_timestamp'
 TRANSITION_KEY = 'lifecycle:transition'
 
 
@@ -53,51 +54,12 @@ def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
     return result
 
 
-def add_enabled_timestamps(event_log: pd.DataFrame,
-                           concurrent_activities: Optional[List[tuple]] = None) -> pd.DataFrame:
-    enabled_timestamp_key = 'enabled_timestamp'
-    start_timestamp_key = START_TIMESTAMP_KEY
-    end_timestamp_key = END_TIMESTAMP_KEY
-
-    event_log = event_log.sort_values(by=end_timestamp_key)
-
-    # default enabled timestamps are start timestamps
-    event_log[enabled_timestamp_key] = event_log[start_timestamp_key]
-
-    if concurrent_activities is None:
-        concurrent_activities = get_concurrent_activities(event_log)  # NOTE: per case concurrency identification
-
-    for i in event_log.index:
-        activity_name = event_log.loc[i][ACTIVITY_KEY]
-        start = event_log.loc[i][start_timestamp_key]
-
-        concurrent_activities_names = None
-        for item in concurrent_activities:
-            if activity_name in item:
-                concurrent_activities_names = item
-                break
-
-        query = '`time:timestamp` <= @start & `concept:name` != @activity_name'
-        if concurrent_activities_names:
-            query += ' & `concept:name` not in @concurrent_activities_names'
-
-        ended_before = event_log.query(query)
-        if ended_before is not None and not ended_before.empty:
-            enabled_timestamp = ended_before[end_timestamp_key].max()
-            event_log.at[i, enabled_timestamp_key] = enabled_timestamp
-
-    event_log[enabled_timestamp_key] = pd.to_datetime(event_log[enabled_timestamp_key])
-    event_log[end_timestamp_key] = pd.to_datetime(event_log[end_timestamp_key])
-
-    return event_log
-
-
 def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, set]:
     column_names = EventLogIDs(
         case=CASE_KEY,
         activity=ACTIVITY_KEY,
-        start_timestamp=START_TIMESTAMP_KEY,
-        end_timestamp=END_TIMESTAMP_KEY,
+        start_time=START_TIMESTAMP_KEY,
+        end_time=END_TIMESTAMP_KEY,
         resource=RESOURCE_KEY,
         lifecycle=TRANSITION_KEY
     )
@@ -211,14 +173,28 @@ def join_per_case_items(items: list[pd.DataFrame]) -> pd.DataFrame:
         group_duration: pd.Timedelta = group['duration'].sum()
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
-        result = result.append({
-            'source_activity': source_activity,
-            'source_resource': source_resource,
-            'destination_activity': destination_activity,
-            'destination_resource': destination_resource,
-            'duration_sum': group_duration,
-            'frequency': group_frequency,
-            'cases': group_case_id
-        }, ignore_index=True)
+        result = pd.concat([result, pd.DataFrame({
+            'source_activity': [source_activity],
+            'source_resource': [source_resource],
+            'destination_activity': [destination_activity],
+            'destination_resource': [destination_resource],
+            'duration_sum': [group_duration],
+            'frequency': [group_frequency],
+            'cases': [group_case_id]
+        })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result
+
+
+def add_enabled_timestamp(log: pd.DataFrame):
+    log[START_TIMESTAMP_KEY] = pd.to_datetime(log[START_TIMESTAMP_KEY], utc=True)
+    log[END_TIMESTAMP_KEY] = pd.to_datetime(log[END_TIMESTAMP_KEY], utc=True)
+
+    config = Configuration(log_ids=DEFAULT_XES_IDS)
+    config.log_ids.start_time = START_TIMESTAMP_KEY
+    config.log_ids.enabled_time = ENABLED_TIMESTAMP_KEY
+    config.log_ids.case = CASE_KEY
+    config.log_ids.available_time = 'available_timestamp'
+
+    oracle = HeuristicsConcurrencyOracle(log, config)
+    oracle.add_enabled_times(log)

@@ -9,6 +9,7 @@ from ..core import core
 
 def identify(log_path: Path, parallel_run=True) -> dict:
     log = core.lifecycle_to_interval(log_path)
+    core.add_enabled_timestamp(log)
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
 
     handoff_report = handoff.identify(log, parallel_activities, parallel_run)
@@ -40,9 +41,9 @@ def _subtract_metrics_inplace(df1: pd.DataFrame, df2: pd.DataFrame, common_index
     # if df1 have longer duration, subtract from df1
     df1_longer = df1.loc[common_index][metric_key] >= df2.loc[common_index][metric_key]
     df1_longer_index = df1.loc[common_index][df1_longer].index
-    df1.at[df1_longer_index, metric_key] = df1.loc[df1_longer_index][metric_key] - df2.loc[df1_longer_index][metric_key]
+    df1.loc[df1_longer_index, metric_key] = df1.loc[df1_longer_index][metric_key] - df2.loc[df1_longer_index][metric_key]
 
     # if df2 have longer duration, subtract from df2
     df2_longer = df1.loc[common_index][metric_key] < df2.loc[common_index][metric_key]
     df2_longer_index = df2.loc[common_index][df2_longer].index
-    df2.at[df2_longer_index, metric_key] = df2.loc[df2_longer_index][metric_key] - df1.loc[df2_longer_index][metric_key]
+    df2.loc[df2_longer_index, metric_key] = df2.loc[df2_longer_index][metric_key] - df1.loc[df2_longer_index][metric_key]
