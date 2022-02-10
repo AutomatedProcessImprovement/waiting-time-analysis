@@ -28,7 +28,7 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
     activity_changed = case[core.ACTIVITY_KEY] != next_events[core.ACTIVITY_KEY]
     consecutive_timestamps = case[core.END_TIMESTAMP_KEY] <= next_events[core.START_TIMESTAMP_KEY]
 
-    not_parallel = pd.Series(index=case.index)
+    not_parallel = pd.Series(index=case.index, dtype=bool)
     prev_activities = case[core.ACTIVITY_KEY]
     next_activities = next_events[core.ACTIVITY_KEY]
     for (i, pair) in enumerate(zip(prev_activities, next_activities)):
@@ -63,13 +63,14 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
             duration = pd.Timedelta(0)
 
         # appending the handoff data
-        handoffs = handoffs.append({  # TODO: change to pd.concat
-            'source_activity': source[core.ACTIVITY_KEY],
-            'source_resource': source[core.RESOURCE_KEY],
-            'destination_activity': destination[core.ACTIVITY_KEY],
-            'destination_resource': destination[core.RESOURCE_KEY],
-            'duration': duration
-        }, ignore_index=True)
+        handoff = pd.DataFrame({
+            'source_activity': [source[core.ACTIVITY_KEY]],
+            'source_resource': [source[core.RESOURCE_KEY]],
+            'destination_activity': [destination[core.ACTIVITY_KEY]],
+            'destination_resource': [destination[core.RESOURCE_KEY]],
+            'duration': [duration]
+        })
+        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
 
     # filling in N/A with some values
     handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
@@ -82,14 +83,14 @@ def _identify_handoffs_per_case(case: pd.DataFrame, parallel_activities: Dict[st
     ])
     for group in handoff_grouped:
         pair, records = group
-        handoff_with_frequency = handoff_with_frequency.append(pd.Series({  # TODO: change to pd.concat
-            'source_activity': pair[0],
-            'source_resource': pair[1],
-            'destination_activity': pair[2],
-            'destination_resource': pair[3],
-            'duration': records['duration'].sum(),
-            'frequency': len(records)
-        }), ignore_index=True)
+        handoff_with_frequency = pd.concat([handoff_with_frequency, pd.DataFrame({
+            'source_activity': [pair[0]],
+            'source_resource': [pair[1]],
+            'destination_activity': [pair[2]],
+            'destination_resource': [pair[3]],
+            'duration': [records['duration'].sum()],
+            'frequency': [len(records)]
+        })], ignore_index=True)
 
     # dropping edge cases with Start and End as an activity
     starts_ends_values = ['Start', 'End']

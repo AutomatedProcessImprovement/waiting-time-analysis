@@ -173,15 +173,15 @@ def join_per_case_items(items: list[pd.DataFrame]) -> pd.DataFrame:
         group_duration: pd.Timedelta = group['duration'].sum()
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
-        result = result.append({
-            'source_activity': source_activity,
-            'source_resource': source_resource,
-            'destination_activity': destination_activity,
-            'destination_resource': destination_resource,
-            'duration_sum': group_duration,
-            'frequency': group_frequency,
-            'cases': group_case_id
-        }, ignore_index=True)
+        result = pd.concat([result, pd.DataFrame({
+            'source_activity': [source_activity],
+            'source_resource': [source_resource],
+            'destination_activity': [destination_activity],
+            'destination_resource': [destination_resource],
+            'duration_sum': [group_duration],
+            'frequency': [group_frequency],
+            'cases': [group_case_id]
+        })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result
 
