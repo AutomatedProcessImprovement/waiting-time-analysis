@@ -5,14 +5,13 @@ A tool to identify waste in a business process from an event log.
 ## Installation
 
 ```shell
-$ git clone https://github.com/AutomatedProcessImprovement/Waste-Calculation.git process-waste
+$ git clone https://github.com/AutomatedProcessImprovement/process-waste.git process-waste
 $ cd process-waste
 $ git submodule update --init --recursive
-$ python3 -m venv venv
+$ python3.9 -m venv venv
 $ source venv/bin/activate
 $ python -m pip install --upgrade pip
-$ pip install poetry
-$ poetry install
+$ pip install .
 $ cd start-time-estimator
 $ pip install -e .
 ```
