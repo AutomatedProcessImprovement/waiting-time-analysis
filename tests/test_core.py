@@ -23,26 +23,9 @@ def case_enabled(assets_path) -> pd.DataFrame:
     return case.sort_values(by='time:timestamp')
 
 
-def test_get_concurrent_activities(cases):
-    for case in cases:
-        activities = core.get_concurrent_activities(case)
-        assert activities is not None
-        assert len(activities) == 1
-        assert len(activities[0]) == 2
-
-
 @pytest.mark.log_path('BIMP_example.csv')
 def test_alpha_oracle(event_log):
     result = core.parallel_activities_with_alpha_oracle(event_log)
-    assert result is not None
-
-
-@pytest.mark.log_path('BIMP_example.csv')
-def test_concurrent_activities_by_time(event_log):
-    time_columns = ['start_timestamp', 'time:timestamp']
-    for column in time_columns:
-        event_log[column] = pd.to_datetime(event_log[column])
-    result = core.concurrent_activities_by_time(event_log)
     assert result is not None
 
 

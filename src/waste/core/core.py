@@ -1,18 +1,14 @@
 import concurrent.futures
 import multiprocessing
 from pathlib import Path
-from typing import Tuple, List, Optional, Dict
+from typing import List, Optional, Dict
 
 import numpy as np
 import pandas as pd
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, \
     ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs, DEFAULT_XES_IDS
-from pm4py.objects.conversion.log import converter as log_converter
-from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.objects.log.util import interval_lifecycle
-from pm4py.statistics.concurrent_activities.pandas import get as concurrent_activities_get
+    HeuristicsThresholds, EventLogIDs
 from tqdm import tqdm
 
 END_TIMESTAMP_KEY = 'time:timestamp'
@@ -39,37 +35,6 @@ default_configuration = Configuration(
     resource_availability_type=ResourceAvailabilityType.SIMPLE,
     heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
 )
-
-
-def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
-    log = xes_importer.apply(str(log_path))
-    log_interval = interval_lifecycle.to_interval(log)
-    event_log_interval = log_converter.apply(log_interval, variant=log_converter.Variants.TO_DATA_FRAME)
-    return event_log_interval
-
-
-def get_concurrent_activities(case: pd.DataFrame) -> list[Tuple]:
-    case = case.sort_values(by=[START_TIMESTAMP_KEY, END_TIMESTAMP_KEY])
-
-    def _preprocess_case(case: pd.DataFrame):
-        # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
-        case[END_TIMESTAMP_KEY] = case[END_TIMESTAMP_KEY] - pd.Timedelta('1 us')
-        return case
-
-    def _postprocess_case(case: pd.DataFrame):
-        # subtracting a microsecond from `time:timestamp` to avoid touching events to be concurrent ones
-        case[END_TIMESTAMP_KEY] = case[END_TIMESTAMP_KEY] + pd.Timedelta('1 us')
-        return case
-
-    case = _preprocess_case(case)
-
-    params = {concurrent_activities_get.Parameters.TIMESTAMP_KEY: END_TIMESTAMP_KEY,
-              concurrent_activities_get.Parameters.START_TIMESTAMP_KEY: START_TIMESTAMP_KEY}
-    concurrent_activities = concurrent_activities_get.apply(case, parameters=params)
-    result = [activities for activities in concurrent_activities]
-
-    _postprocess_case(case)
-    return result
 
 
 def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, set]:
@@ -122,21 +87,6 @@ def parallel_activities_with_alpha_oracle(df: pd.DataFrame) -> List[tuple]:
                 parallel_pair.add(column)
         if len(parallel_pair) > 0:
             parallel_activities.add(tuple(parallel_pair))
-
-    return list(parallel_activities)
-
-
-def concurrent_activities_by_time(df: pd.DataFrame) -> List[tuple]:
-    parallel_activities = set()
-
-    # per group
-    df_grouped = df.groupby(by=CASE_KEY)
-    for case_id, case in df_grouped:
-        activities = get_concurrent_activities(case)
-        if len(activities) == 0:
-            continue
-        for concurrent in activities:
-            parallel_activities.add(concurrent)
 
     return list(parallel_activities)
 
