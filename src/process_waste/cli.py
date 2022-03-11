@@ -17,7 +17,7 @@ def main():
 @click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
               help='Run the tool using all available cores in parallel.')
 def transportation(log_path: Path, output_dir: Path, parallel: bool):
-    from waste import transportation
+    from process_waste import transportation
 
     result = transportation.identify(log_path, parallel)
 

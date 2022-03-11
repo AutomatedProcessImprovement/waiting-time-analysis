@@ -1,8 +1,8 @@
 import pytest
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 
-from waste import handoff
-from waste.core import core
+from process_waste import handoff
+from process_waste.core import core
 
 
 @pytest.mark.log_path('PurchasingExample.csv')

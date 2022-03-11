@@ -1,4 +1,4 @@
-from waste.transportation import identify
+from process_waste.transportation import identify
 
 
 def test_identify(assets_path):

@@ -3,10 +3,10 @@ from typing import Optional, Dict
 import click
 import pandas as pd
 
-from waste.core import core
+from process_waste.core import core
 
 
-def identify(log: pd.DataFrame, parallel_activities: dict[str, set], parallel_run=True) -> Optional[pd.DataFrame]:
+def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> Optional[pd.DataFrame]:
     click.echo(f'Ping-pong identification. Parallel run: {parallel_run}')
     result = core.identify_main(
         log=log,

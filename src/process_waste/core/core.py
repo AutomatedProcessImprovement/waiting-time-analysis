@@ -98,7 +98,7 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
 
 
-def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identify_fn_per_case, join_fn,
+def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identify_fn_per_case, join_fn,
                   parallel_run=True) -> Optional[pd.DataFrame]:
     log_grouped = log.groupby(by=CASE_KEY)
     all_items = []
@@ -131,7 +131,7 @@ def identify_main(log: pd.DataFrame, parallel_activities: dict[str, set], identi
     return result
 
 
-def join_per_case_items(items: list[pd.DataFrame]) -> pd.DataFrame:
+def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
     """Joins a list of items summing up frequency and duration."""
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
     grouped = pd.concat(items).groupby(columns)

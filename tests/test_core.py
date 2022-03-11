@@ -3,8 +3,8 @@ from typing import List
 import pandas as pd
 import pytest
 
-from waste import core
-from waste.core import timezone_aware_subtraction
+from process_waste import core
+from process_waste.core import timezone_aware_subtraction
 
 
 @pytest.fixture

@@ -4,10 +4,10 @@ from typing import Dict
 import click
 import pandas as pd
 
-from waste import core
+from process_waste import core
 
 
-def identify(log: pd.DataFrame, parallel_activities: dict[str, set], parallel_run=True) -> pd.DataFrame:
+def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
     click.echo(f'Handoff identification. Parallel run: {parallel_run}')
     result = core.identify_main(
         log=log,

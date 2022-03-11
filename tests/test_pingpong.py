@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from waste import core, pingpong
+from process_waste import core, pingpong
 
 
 def test_ping_pong_identification(assets_path):
