@@ -2,9 +2,7 @@ from typing import List
 
 import pandas as pd
 import pytest
-from pm4py.objects.conversion.log import converter as log_converter
-from pm4py.objects.log.importer.xes import importer as xes_importer
-from pm4py.objects.log.util import interval_lifecycle
+
 from waste import core
 from waste.core import timezone_aware_subtraction
 
@@ -25,11 +23,6 @@ def case_enabled(assets_path) -> pd.DataFrame:
     return case.sort_values(by='time:timestamp')
 
 
-def test_get_interval_log(bimp_example_path):
-    log = core.lifecycle_to_interval(bimp_example_path)
-    assert log is not None
-
-
 def test_get_concurrent_activities(cases):
     for case in cases:
         activities = core.get_concurrent_activities(case)
@@ -38,15 +31,18 @@ def test_get_concurrent_activities(cases):
         assert len(activities[0]) == 2
 
 
-def test_alpha_oracle(bimp_example_path):
-    log_interval_df = core.lifecycle_to_interval(bimp_example_path)
-    result = core.parallel_activities_with_alpha_oracle(log_interval_df)
+@pytest.mark.log_path('BIMP_example.csv')
+def test_alpha_oracle(event_log):
+    result = core.parallel_activities_with_alpha_oracle(event_log)
     assert result is not None
 
 
-def test_concurrent_activities_by_time(bimp_example_path):
-    log_interval_df = core.lifecycle_to_interval(bimp_example_path)
-    result = core.concurrent_activities_by_time(log_interval_df)
+@pytest.mark.log_path('BIMP_example.csv')
+def test_concurrent_activities_by_time(event_log):
+    time_columns = ['start_timestamp', 'time:timestamp']
+    for column in time_columns:
+        event_log[column] = pd.to_datetime(event_log[column])
+    result = core.concurrent_activities_by_time(event_log)
     assert result is not None
 
 
@@ -66,6 +62,7 @@ def handoffs(assets_path) -> List[pd.DataFrame]:
         pd.read_csv(assets_path / 'bimp-example_case_handoff_5.csv'),
         pd.read_csv(assets_path / 'bimp-example_case_handoff_6.csv'),
     ]
+
 
 def test_join_handoffs(handoffs):
     result = core.join_per_case_items(handoffs)

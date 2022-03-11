@@ -8,7 +8,7 @@ from ..core import core
 
 
 def identify(log_path: Path, parallel_run=True) -> dict:
-    log = core.lifecycle_to_interval(log_path)
+    log = core.read_csv(log_path)
     core.add_enabled_timestamp(log)
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
 

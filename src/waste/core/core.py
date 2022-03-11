@@ -5,9 +5,10 @@ from typing import Tuple, List, Optional, Dict
 
 import numpy as np
 import pandas as pd
-from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs, DEFAULT_XES_IDS
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
+from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, \
+    ResourceAvailabilityType, \
+    HeuristicsThresholds, EventLogIDs, DEFAULT_XES_IDS
 from pm4py.objects.conversion.log import converter as log_converter
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.util import interval_lifecycle
@@ -20,7 +21,24 @@ CASE_KEY = 'case:concept:name'
 RESOURCE_KEY = 'org:resource'
 START_TIMESTAMP_KEY = 'start_timestamp'
 ENABLED_TIMESTAMP_KEY = 'enabled_timestamp'
+AVAILABLE_TIMESTAMP_KEY = 'available_timestamp'
 TRANSITION_KEY = 'lifecycle:transition'
+
+default_configuration = Configuration(
+    log_ids=EventLogIDs(
+        case=CASE_KEY,
+        activity=ACTIVITY_KEY,
+        start_time=START_TIMESTAMP_KEY,
+        end_time=END_TIMESTAMP_KEY,
+        enabled_time=ENABLED_TIMESTAMP_KEY,
+        available_time=AVAILABLE_TIMESTAMP_KEY,
+        resource=RESOURCE_KEY,
+        lifecycle=TRANSITION_KEY,
+    ),
+    concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
+    resource_availability_type=ResourceAvailabilityType.SIMPLE,
+    heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
+)
 
 
 def lifecycle_to_interval(log_path: Path) -> pd.DataFrame:
@@ -187,14 +205,16 @@ def join_per_case_items(items: list[pd.DataFrame]) -> pd.DataFrame:
 
 
 def add_enabled_timestamp(log: pd.DataFrame):
-    log[START_TIMESTAMP_KEY] = pd.to_datetime(log[START_TIMESTAMP_KEY], utc=True)
-    log[END_TIMESTAMP_KEY] = pd.to_datetime(log[END_TIMESTAMP_KEY], utc=True)
-
-    config = Configuration(log_ids=DEFAULT_XES_IDS)
-    config.log_ids.start_time = START_TIMESTAMP_KEY
-    config.log_ids.enabled_time = ENABLED_TIMESTAMP_KEY
-    config.log_ids.case = CASE_KEY
-    config.log_ids.available_time = 'available_timestamp'
-
-    oracle = HeuristicsConcurrencyOracle(log, config)
+    global default_configuration
+    oracle = HeuristicsConcurrencyOracle(log, default_configuration)
     oracle.add_enabled_times(log)
+
+
+def read_csv(log_path: Path) -> pd.DataFrame:
+    log = pd.read_csv(log_path)
+
+    time_columns = ['start_timestamp', 'time:timestamp']
+    for column in time_columns:
+        log[column] = pd.to_datetime(log[column])
+
+    return log
