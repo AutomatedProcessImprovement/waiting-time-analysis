@@ -1,4 +1,6 @@
-[submodule "start-time-estimator"]
-	path = start-time-estimator
+[submodule "vendor/batch-processing-analysis"]
+	path = vendor/batch-processing-analysis
+	url = https://github.com/AutomatedProcessImprovement/batch-processing-analysis.git
+[submodule "vendor/start-time-estimator"]
+	path = vendor/start-time-estimator
 	url = https://github.com/AutomatedProcessImprovement/start-time-estimator.git
-
