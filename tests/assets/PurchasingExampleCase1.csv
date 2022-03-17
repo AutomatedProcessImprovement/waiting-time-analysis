@@ -1,0 +1,18 @@
+concept:name,org:resource,Activity,Resource,start_timestamp,time:timestamp,case:concept:name,case:variant,case:variant-index,case:creator
+Create Purchase Requisition,Kim Passa,Create Purchase Requisition,Kim Passa,2011-01-01 00:00:00-05:00,2011-01-01 00:37:00-05:00,1,Variant 2,2,Fluxicon Disco
+Create Request for Quotation,Kim Passa,Create Request for Quotation,Kim Passa,2011-01-01 05:37:00-05:00,2011-01-01 05:45:00-05:00,1,Variant 2,2,Fluxicon Disco
+Analyze Request for Quotation,Karel de Groot,Analyze Request for Quotation,Karel de Groot,2011-01-01 06:41:00-05:00,2011-01-01 06:55:00-05:00,1,Variant 2,2,Fluxicon Disco
+Send Request for Quotation to Supplier,Karel de Groot,Send Request for Quotation to Supplier,Karel de Groot,2011-01-01 11:43:00-05:00,2011-01-01 12:09:00-05:00,1,Variant 2,2,Fluxicon Disco
+Create Quotation comparison Map,Magdalena Predutta,Create Quotation comparison Map,Magdalena Predutta,2011-01-01 12:32:00-05:00,2011-01-01 16:03:00-05:00,1,Variant 2,2,Fluxicon Disco
+Analyze Quotation Comparison Map,Immanuel Karagianni,Analyze Quotation Comparison Map,Immanuel Karagianni,2011-01-01 22:44:00-05:00,2011-01-01 23:13:00-05:00,1,Variant 2,2,Fluxicon Disco
+Choose best option,Tesca Lobes,Choose best option,Tesca Lobes,2011-01-01 23:13:00-05:00,2011-01-01 23:13:00-05:00,1,Variant 2,2,Fluxicon Disco
+Settle Conditions With Supplier,Francois de Perrier,Settle Conditions With Supplier,Francois de Perrier,2011-01-02 01:22:00-05:00,2011-01-02 09:20:00-05:00,1,Variant 2,2,Fluxicon Disco
+Create Purchase Order,Karel de Groot,Create Purchase Order,Karel de Groot,2011-01-02 09:58:00-05:00,2011-01-02 10:10:00-05:00,1,Variant 2,2,Fluxicon Disco
+Confirm Purchase Order,Sean Manney,Confirm Purchase Order,Sean Manney,2011-01-02 14:09:00-05:00,2011-01-02 14:43:00-05:00,1,Variant 2,2,Fluxicon Disco
+Deliver Goods Services,Sean Manney,Deliver Goods Services,Sean Manney,2011-01-02 20:49:00-05:00,2011-01-03 03:37:00-05:00,1,Variant 2,2,Fluxicon Disco
+Release Purchase Order,Elvira Lores,Release Purchase Order,Elvira Lores,2011-01-03 11:20:00-05:00,2011-01-03 11:21:00-05:00,1,Variant 2,2,Fluxicon Disco
+Approve Purchase Order for payment,Karel de Groot,Approve Purchase Order for payment,Karel de Groot,2011-01-03 19:09:00-05:00,2011-01-03 19:10:00-05:00,1,Variant 2,2,Fluxicon Disco
+Send Invoice,Kiu Kan,Send Invoice,Kiu Kan,2011-01-04 00:54:00-05:00,2011-01-04 00:54:00-05:00,1,Variant 2,2,Fluxicon Disco
+Release Supplier's Invoice,Karalda Nimwada,Release Supplier's Invoice,Karalda Nimwada,2011-01-04 15:08:00-05:00,2011-01-04 15:13:00-05:00,1,Variant 2,2,Fluxicon Disco
+Authorize Supplier's Invoice payment,Karalda Nimwada,Authorize Supplier's Invoice payment,Karalda Nimwada,2011-01-04 15:13:00-05:00,2011-01-04 15:13:00-05:00,1,Variant 2,2,Fluxicon Disco
+Pay Invoice,Pedro Alvares,Pay Invoice,Pedro Alvares,2011-01-04 15:22:00-05:00,2011-01-04 15:31:00-05:00,1,Variant 2,2,Fluxicon Disco

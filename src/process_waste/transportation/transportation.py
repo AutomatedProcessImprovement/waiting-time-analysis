@@ -18,21 +18,24 @@ def identify(log_path: Path, parallel_run=True) -> dict:
     # identifying common records for both reports
     index_columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
     handoff_report = handoff_report.set_index(index_columns)
-    pingpong_report = pingpong_report.set_index(index_columns)
-    common_index = handoff_report.index.intersection(pingpong_report.index)
 
-    # metrics to update
-    duration_key = 'duration_sum'
-    duration_sec_key = 'duration_sum_seconds'
-    frequency_key = 'frequency'
+    if pingpong_report is not None and not pingpong_report.empty:
+        pingpong_report = pingpong_report.set_index(index_columns)
+        common_index = handoff_report.index.intersection(pingpong_report.index)
 
-    _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=duration_key)
-    _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=duration_sec_key)
-    _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
+        # metrics to update
+        duration_key = 'duration_sum'
+        duration_sec_key = 'duration_sum_seconds'
+        frequency_key = 'frequency'
+
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=duration_key)
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=duration_sec_key)
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
 
     # converting index back to columns
     handoff_report = handoff_report.reset_index()
-    pingpong_report = pingpong_report.reset_index()
+    if pingpong_report is not None and not pingpong_report.empty:
+        pingpong_report = pingpong_report.reset_index()
 
     return {'handoff': handoff_report, 'pingpong': pingpong_report}
 

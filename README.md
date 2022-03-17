@@ -19,7 +19,7 @@ $ pip install -e .
 ## Getting Started
 
 ```shell
-$ process-waste transportation -l data/PurschasingExample.xes -o results
+$ process-waste transportation -l data/PurschasingExample.xes
 ```
 
 The tool produces statistics in the CSV-format and saves it in the folder where the tool has been executed by default. 
@@ -38,6 +38,23 @@ Options:
 
 Commands:
   transportation
+```
+
+## Contributing
+
+For contributions, please install `pre-commit` to test the code before committing automatically.
+
+```shell
+$ pip install pre-commit
+$ pre-commit install
+```
+
+Install `poetry` to manage dependencies and versioning.
+
+```shell
+$ python -m pip install poetry
+$ poetry version minor # or patch, major, etc. to bump the version
+$ poetry add <package> # to add a dependency
 ```
 
 ## References

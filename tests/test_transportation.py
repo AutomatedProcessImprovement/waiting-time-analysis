@@ -7,3 +7,5 @@ def test_identify(assets_path):
     assert result is not None
     assert result['handoff'] is not None
     assert result['pingpong'] is not None
+
+
