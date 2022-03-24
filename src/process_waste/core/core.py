@@ -22,6 +22,7 @@ AVAILABLE_TIMESTAMP_KEY = 'available_timestamp'
 TRANSITION_KEY = 'lifecycle:transition'
 WAITING_TIME_TOTAL_KEY = 'wt_total'
 WAITING_TIME_BATCHING_KEY = 'wt_batching'
+WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 
 default_configuration = Configuration(
     log_ids=EventLogIDs(
@@ -170,9 +171,15 @@ def add_enabled_timestamp(log: pd.DataFrame):
 def read_csv(log_path: Path, utc: bool = True) -> pd.DataFrame:
     log = pd.read_csv(log_path)
 
-    time_columns = ['start_timestamp', 'time:timestamp']
+    time_columns = [START_TIMESTAMP_KEY, END_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY]
     for column in time_columns:
-        log[column] = pd.to_datetime(log[column], utc=utc)
+        if column in log.columns:
+            log[column] = pd.to_datetime(log[column], utc=utc)
+
+    duration_columns = [WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY]
+    for column in duration_columns:
+        if column in log.columns:
+            log[column] = pd.to_timedelta(log[column])
 
     return log
 

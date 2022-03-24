@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, EventLogIDs
+from process_waste.core import core
 
 
 @pytest.fixture(scope='module')
@@ -70,11 +71,7 @@ def config() -> Configuration:
 @pytest.fixture
 def event_log(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.node.get_closest_marker('log_path').args[0]
-    log = pd.read_csv(log_path)
-
-    time_columns = ['start_timestamp', 'time:timestamp']
-    for column in time_columns:
-        log[column] = pd.to_datetime(log[column])
+    log = core.read_csv(log_path)
 
     return log
 
