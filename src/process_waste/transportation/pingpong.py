@@ -95,11 +95,11 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[
                 'destination_activity': event[core.ACTIVITY_KEY],
                 'destination_resource': event[core.RESOURCE_KEY],
                 'frequency': 1,
-                'duration': step2_handoff_duration + step3_handoff_duration
+                'wt_total': step2_handoff_duration + step3_handoff_duration
             }
             if ping_pong_key in ping_pongs:
                 ping_pong['frequency'] = ping_pongs[ping_pong_key]['frequency'] + 1
-                ping_pong['duration'] = ping_pongs[ping_pong_key]['duration'] + ping_pong['duration']
+                ping_pong['wt_total'] = ping_pongs[ping_pong_key]['wt_total'] + ping_pong['wt_total']
             ping_pongs[ping_pong_key] = ping_pong
 
         pre_pre_previous_event = pre_previous_event

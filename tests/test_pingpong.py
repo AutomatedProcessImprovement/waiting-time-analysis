@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from process_waste import core, pingpong
+from process_waste import core, pingpong, WAITING_TIME_TOTAL_KEY
 
 
 def test_ping_pong_identification(assets_path):
@@ -18,7 +18,7 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(2 * 60 * 60 + 11 * 60, 'seconds'),
+                 WAITING_TIME_TOTAL_KEY: pd.to_timedelta(2 * 60 * 60 + 11 * 60, 'seconds'),
                  'case_id': '1'}]
             )
         },
@@ -38,14 +38,14 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(2 * 60 * 60 + 11 * 60, 'seconds'),
+                 WAITING_TIME_TOTAL_KEY: pd.to_timedelta(2 * 60 * 60 + 11 * 60, 'seconds'),
                  'case_id': '1'},
                 {'source_activity': 'Approve Purchase Order for payment',
                  'source_resource': 'Karel de Groot',
                  'destination_activity': 'Send Invoice',
                  'destination_resource': 'Kiu Kan',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(5 * 60 * 60 + 45 * 60, 'seconds'),
+                 WAITING_TIME_TOTAL_KEY: pd.to_timedelta(5 * 60 * 60 + 45 * 60, 'seconds'),
                  'case_id': '1'}])
         },
         {
@@ -58,14 +58,14 @@ def test_ping_pong_identification(assets_path):
                  'destination_activity': 'Analyze Request for Quotation',
                  'destination_resource': 'Karel de Groot',
                  'frequency': 2,
-                 'duration': pd.to_timedelta(5 * 60 * 60 + 28 * 60, 'seconds'),
+                 WAITING_TIME_TOTAL_KEY: pd.to_timedelta(5 * 60 * 60 + 28 * 60, 'seconds'),
                  'case_id': '1'},
                 {'source_activity': 'Analyze Request for Quotation',
                  'source_resource': 'Karel de Groot',
                  'destination_activity': 'Create Request for Quotation',
                  'destination_resource': 'Kim Passa',
                  'frequency': 1,
-                 'duration': pd.to_timedelta(3 * 60 * 60 + 3 * 60, 'seconds'),
+                 WAITING_TIME_TOTAL_KEY: pd.to_timedelta(3 * 60 * 60 + 3 * 60, 'seconds'),
                  'case_id': '1'}])
         },
     ]
@@ -93,4 +93,4 @@ def test_ping_pong_identify(event_log):
     parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
     core.add_enabled_timestamp(event_log)
     result = pingpong.identify(event_log, parallel_activities, parallel_run=False)
-    assert sum(result['duration_sum_seconds'] < 0) == 0
+    assert sum(result['wt_total_seconds'] < 0) == 0

@@ -3,6 +3,7 @@ import multiprocessing
 from pathlib import Path
 from typing import List, Optional, Dict
 
+import click
 import numpy as np
 import pandas as pd
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
@@ -19,6 +20,8 @@ START_TIMESTAMP_KEY = 'start_timestamp'
 ENABLED_TIMESTAMP_KEY = 'enabled_timestamp'
 AVAILABLE_TIMESTAMP_KEY = 'available_timestamp'
 TRANSITION_KEY = 'lifecycle:transition'
+WAITING_TIME_TOTAL_KEY = 'wt_total'
+WAITING_TIME_BATCHING_KEY = 'wt_batching'
 
 default_configuration = Configuration(
     log_ids=EventLogIDs(
@@ -127,7 +130,7 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
         return None
 
     result: pd.DataFrame = join_fn(all_items)
-    result['duration_sum_seconds'] = result['duration_sum'] / np.timedelta64(1, 's')
+    result['wt_total_seconds'] = result[WAITING_TIME_TOTAL_KEY] / np.timedelta64(1, 's')
     return result
 
 
@@ -138,7 +141,10 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
     result = pd.DataFrame(columns=columns)
     for pair_index, group in grouped:
         source_activity, source_resource, destination_activity, destination_resource = pair_index
-        group_duration: pd.Timedelta = group['duration'].sum()
+        group_wt_total: pd.Timedelta = group[WAITING_TIME_TOTAL_KEY].sum()
+        group_wt_batching = 0
+        if WAITING_TIME_BATCHING_KEY in group.columns:
+            group_wt_batching = group[WAITING_TIME_BATCHING_KEY].sum()
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
         result = pd.concat([result, pd.DataFrame({
@@ -146,7 +152,8 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
             'source_resource': [source_resource],
             'destination_activity': [destination_activity],
             'destination_resource': [destination_resource],
-            'duration_sum': [group_duration],
+            WAITING_TIME_TOTAL_KEY: [group_wt_total],
+            WAITING_TIME_BATCHING_KEY: [group_wt_batching],
             'frequency': [group_frequency],
             'cases': [group_case_id]
         })], ignore_index=True)
@@ -160,11 +167,31 @@ def add_enabled_timestamp(log: pd.DataFrame):
     oracle.add_enabled_times(log)
 
 
-def read_csv(log_path: Path) -> pd.DataFrame:
+def read_csv(log_path: Path, utc: bool = True) -> pd.DataFrame:
     log = pd.read_csv(log_path)
 
     time_columns = ['start_timestamp', 'time:timestamp']
     for column in time_columns:
-        log[column] = pd.to_datetime(log[column])
+        log[column] = pd.to_datetime(log[column], utc=utc)
 
     return log
+
+
+def print_section_boundaries(title: Optional[str] = None):
+    """Decorator that pretty-prints the result of the analysis"""
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            click.echo('\n' + '-' * 80)
+            if title:
+                click.echo(title)
+            else:
+                click.echo(func.__name__)
+            click.echo('-' * 80)
+            result = func(*args, **kwargs)
+            click.echo('-' * 80)
+            return result
+
+        return wrapper
+
+    return decorator

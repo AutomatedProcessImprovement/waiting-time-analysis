@@ -22,7 +22,6 @@ def transportation(log_path: Path, output_dir: Path, parallel: bool):
     result = identify(log_path, parallel)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-
     extension_suffix = '.csv'
 
     # handoff

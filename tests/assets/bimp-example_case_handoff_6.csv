@@ -1,4 +1,4 @@
-,source_activity,source_resource,destination_activity,destination_resource,duration,frequency,case_id
+,source_activity,source_resource,destination_activity,destination_resource,wt_total,frequency,case_id
 0,Assess application,Credit Officer-000001,Make credit offer,Credit Officer-000002,0 days 00:20:54.142001,1.0,1
 1,Make credit offer,Credit Officer-000002,Credit  application  processed,NA,0 days 00:00:00.000001,1.0,1
 2,Credit application received,NA,Check credit history,Clerk-000002,0 days 00:00:00.000001,1.0,1

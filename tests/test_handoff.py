@@ -6,6 +6,7 @@ from process_waste import handoff
 from process_waste.core import core
 from process_waste.core import read_csv
 from process_waste.transportation.handoff import _identify_handoffs_per_case_and_make_report, _strict_handoffs_occurred
+from process_waste.waiting_time import batching
 
 
 @pytest.mark.log_path('PurchasingExample.csv')
@@ -15,7 +16,7 @@ def test_negative_duration(event_log, config):
 
     parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
     result = handoff.identify(event_log, parallel_activities, parallel_run=False)
-    assert sum(result['duration_sum_seconds'] < 0) == 0
+    assert sum(result['wt_total_seconds'] < 0) == 0
 
 
 def test_strict_handoffs_occurred(assets_path):
