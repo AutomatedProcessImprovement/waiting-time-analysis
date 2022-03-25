@@ -21,8 +21,6 @@ def identify(log_path: Path, parallel_run=True) -> dict:
     # total waiting time
     log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
 
-    log = contention.run_analysis(log)
-
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
 
     handoff_report = handoff.identify(log, parallel_activities, parallel_run)

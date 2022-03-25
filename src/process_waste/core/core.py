@@ -112,7 +112,7 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in tqdm(log_grouped, desc='submitting tasks for concurrent execution'):
                 case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
-                handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id)
+                handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id, log=log)
                 handles.append(handle)
 
         for h in tqdm(handles, desc='waiting for tasks to finish'):
@@ -123,7 +123,7 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
     else:
         for (case_id, case) in tqdm(log_grouped, desc='processing cases'):
             case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
-            result = identify_fn_per_case(case, parallel_activities, case_id)
+            result = identify_fn_per_case(case, parallel_activities, case_id, log=log)
             if result is not None:
                 all_items.append(result)
 

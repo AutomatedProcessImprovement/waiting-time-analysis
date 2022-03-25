@@ -24,9 +24,11 @@ def test_batch_processing_analysis(assets_path):
     assert not batch_event_log['batch_creation_wt'].isna().all()
 
 
-@pytest.mark.log_path('resource_contention.csv')
-def test_resource_contention_for_event(event_log):
-    event_index = pd.Index([0])
+def test_resource_contention_for_event(assets_path):
+    log_path = assets_path / 'resource_contention.csv'
+    event_log = core.read_csv(log_path)
+
+    event_index = pd.Index([1])
     result = contention.contention_for_event(event_index, event_log)
 
     assert result is not None
@@ -35,8 +37,10 @@ def test_resource_contention_for_event(event_log):
     assert result.loc[event_index, WAITING_TIME_CONTENTION_KEY].sum() == pd.Timedelta(hours=2, minutes=30)
 
 
-@pytest.mark.log_path('resource_contention.csv')
-def test_resource_contention_analysis(event_log):
+def test_resource_contention_analysis(assets_path):
+    log_path = assets_path / 'resource_contention.csv'
+    event_log = core.read_csv(log_path)
+
     result = contention.run_analysis(event_log)
 
     assert result is not None

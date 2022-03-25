@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, EventLogIDs
+from process_waste import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
 from process_waste.core import core
 
 
@@ -72,17 +73,15 @@ def config() -> Configuration:
 def event_log(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.node.get_closest_marker('log_path').args[0]
     log = core.read_csv(log_path)
-
+    core.add_enabled_timestamp(log)
+    log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
     return log
 
 
 @pytest.fixture(params=['PurchasingExample.csv', 'Production.csv'])
 def event_log_parametrized(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.param
-    log = pd.read_csv(log_path)
-
-    time_columns = ['start_timestamp', 'time:timestamp']
-    for column in time_columns:
-        log[column] = pd.to_datetime(log[column], utc=True)
-
+    log = core.read_csv(log_path)
+    core.add_enabled_timestamp(log)
+    log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
     return log

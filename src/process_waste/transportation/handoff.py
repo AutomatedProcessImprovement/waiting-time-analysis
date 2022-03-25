@@ -4,6 +4,7 @@ import click
 import pandas as pd
 
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY
+from process_waste.waiting_time import contention
 
 
 def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
@@ -18,18 +19,19 @@ def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_ru
 
 
 def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, parallel_activities: Dict[str, set],
-                                                case_id: str, enabled_on: bool = True) -> pd.DataFrame:
+                                                case_id: str, enabled_on: bool = True,
+                                                log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
     case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 
-    _strict_handoffs_occurred(case, parallel_activities)
-    _self_handoffs_occurred(case, parallel_activities)
+    _mark_strict_handoffs(case, parallel_activities)
+    _mark_self_handoffs(case, parallel_activities)
     potential_handoffs = case[~case['handoff_type'].isna()]
 
     handoffs_index = potential_handoffs.index
-    handoffs = _make_report(case, enabled_on, handoffs_index)
+    handoffs = _make_report(case, enabled_on, handoffs_index, log)
 
     handoffs_with_frequency = _calculate_frequency_and_duration(handoffs)
 
@@ -70,7 +72,8 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
     return handoff_with_frequency
 
 
-def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index) -> pd.DataFrame:
+def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
+                 log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
                WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
@@ -105,9 +108,14 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index)
         # waiting time due to contention: we take the WT of the destination activity only,
         # because the WT of the source activity isn't related to this handoff
         # TODO: confirm this computation
-        waiting_time_contention = pd.Timedelta(0)
-        if WAITING_TIME_CONTENTION_KEY in destination.index:
-            waiting_time_contention = destination[WAITING_TIME_CONTENTION_KEY]
+        # waiting_time_contention = pd.Timedelta(0)
+        # if WAITING_TIME_CONTENTION_KEY in destination.index:
+        #     waiting_time_contention = destination[WAITING_TIME_CONTENTION_KEY]
+        #
+        contention.contention_for_event(loc + 1, log)
+        waiting_time_contention = log.loc[loc + 1, WAITING_TIME_CONTENTION_KEY]
+        if pd.isna(waiting_time_contention):
+            waiting_time_contention = pd.Timedelta(0)
 
         # handoff type
         if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
@@ -134,7 +142,7 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index)
     return handoffs
 
 
-def _strict_handoffs_occurred(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
+def _mark_strict_handoffs(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
     # checking the main conditions for handoff to occur
@@ -160,7 +168,7 @@ def _strict_handoffs_occurred(case: pd.DataFrame, parallel_activities: Optional[
     return case
 
 
-def _self_handoffs_occurred(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
+def _mark_self_handoffs(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
     # checking the main conditions for handoff to occur
