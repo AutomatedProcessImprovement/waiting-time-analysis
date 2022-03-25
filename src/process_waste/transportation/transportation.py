@@ -4,9 +4,9 @@ import pandas as pd
 
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY
+from .. import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
 from ..core import core
-from ..waiting_time import batching
+from ..waiting_time import batching, contention
 
 
 def identify(log_path: Path, parallel_run=True) -> dict:
@@ -15,8 +15,13 @@ def identify(log_path: Path, parallel_run=True) -> dict:
     # NOTE: Batching analysis package adds enabled_timestamp column to the log
     # core.add_enabled_timestamp(log)
 
-    # Taking batch creation time from the batch analysis
+    # taking batch creation time from the batch analysis
     log = batching.add_columns_from_batch_analysis(log, column_names=('batch_creation_wt',))
+
+    # total waiting time
+    log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
+
+    log = contention.run_analysis(log)
 
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
 

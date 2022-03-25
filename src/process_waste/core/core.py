@@ -143,9 +143,15 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
     for pair_index, group in grouped:
         source_activity, source_resource, destination_activity, destination_resource = pair_index
         group_wt_total: pd.Timedelta = group[WAITING_TIME_TOTAL_KEY].sum()
+
         group_wt_batching = 0
         if WAITING_TIME_BATCHING_KEY in group.columns:
             group_wt_batching = group[WAITING_TIME_BATCHING_KEY].sum()
+
+        group_wt_contention = 0
+        if WAITING_TIME_CONTENTION_KEY in group.columns:
+            group_wt_contention = group[WAITING_TIME_CONTENTION_KEY].sum()
+
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
         result = pd.concat([result, pd.DataFrame({
@@ -153,10 +159,11 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
             'source_resource': [source_resource],
             'destination_activity': [destination_activity],
             'destination_resource': [destination_resource],
+            'frequency': [group_frequency],
+            'cases': [group_case_id],
             WAITING_TIME_TOTAL_KEY: [group_wt_total],
             WAITING_TIME_BATCHING_KEY: [group_wt_batching],
-            'frequency': [group_frequency],
-            'cases': [group_case_id]
+            WAITING_TIME_CONTENTION_KEY: [group_wt_contention]
         })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result

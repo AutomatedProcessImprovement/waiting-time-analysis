@@ -1,11 +1,13 @@
 import pandas as pd
+from tqdm import tqdm
 
 from process_waste import RESOURCE_KEY, WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, END_TIMESTAMP_KEY, \
     WAITING_TIME_CONTENTION_KEY
 
 
 def run_analysis(log: pd.DataFrame) -> pd.DataFrame:
-    for index in log.index:
+    log[WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
+    for index in tqdm(log.index, desc='contention analysis'):
         contention_for_event(index, log)
     return log
 

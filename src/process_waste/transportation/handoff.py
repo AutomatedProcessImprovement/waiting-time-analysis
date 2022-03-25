@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import click
 import pandas as pd
 
-from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY
+from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY
 
 
 def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
@@ -27,8 +27,8 @@ def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, parallel_act
     _strict_handoffs_occurred(case, parallel_activities)
     _self_handoffs_occurred(case, parallel_activities)
     potential_handoffs = case[~case['handoff_type'].isna()]
-    handoffs_index = potential_handoffs.index
 
+    handoffs_index = potential_handoffs.index
     handoffs = _make_report(case, enabled_on, handoffs_index)
 
     handoffs_with_frequency = _calculate_frequency_and_duration(handoffs)
@@ -61,10 +61,11 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
             'source_resource': [pair[1]],
             'destination_activity': [pair[2]],
             'destination_resource': [pair[3]],
-            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
             'frequency': [len(records)],
             'handoff_type': [records['handoff_type'].iloc[0]],
+            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
             WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
+            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()]
         })], ignore_index=True)
     return handoff_with_frequency
 
@@ -72,9 +73,14 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
 def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index) -> pd.DataFrame:
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
-               WAITING_TIME_TOTAL_KEY, 'handoff_type']
+               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
     handoffs = pd.DataFrame(columns=columns)
     batch_column_key = 'batch_creation_wt'
+
+    # setting NaT to zero duration
+    if WAITING_TIME_CONTENTION_KEY in case.columns:
+        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
+
     for loc in handoffs_index:
         source = case.loc[loc]
         destination = case.loc[loc + 1]
@@ -89,10 +95,19 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index)
         if waiting_time < pd.Timedelta(0):
             waiting_time = pd.Timedelta(0)
 
-        # waiting time due to batching
-        waiting_time_batch = 0
-        if batch_column_key in source.index and batch_column_key in destination.index:
-            waiting_time_batch = source[batch_column_key] + destination[batch_column_key]
+        # waiting time due to batching: we take the WT of the destination activity only,
+        # because the WT of the source activity isn't related to this handoff
+        # TODO: confirm this computation
+        waiting_time_batch = pd.Timedelta(0)
+        if batch_column_key in destination.index:
+            waiting_time_batch = destination[batch_column_key]
+
+        # waiting time due to contention: we take the WT of the destination activity only,
+        # because the WT of the source activity isn't related to this handoff
+        # TODO: confirm this computation
+        waiting_time_contention = pd.Timedelta(0)
+        if WAITING_TIME_CONTENTION_KEY in destination.index:
+            waiting_time_contention = destination[WAITING_TIME_CONTENTION_KEY]
 
         # handoff type
         if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
@@ -106,9 +121,10 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index)
             'source_resource': [source[core.RESOURCE_KEY]],
             'destination_activity': [destination[core.ACTIVITY_KEY]],
             'destination_resource': [destination[core.RESOURCE_KEY]],
+            'handoff_type': [handoff_type],
             WAITING_TIME_TOTAL_KEY: [waiting_time],
             WAITING_TIME_BATCHING_KEY: [waiting_time_batch],
-            'handoff_type': [handoff_type]
+            WAITING_TIME_CONTENTION_KEY: [waiting_time_contention]
         })
         handoffs = pd.concat([handoffs, handoff], ignore_index=True)
 

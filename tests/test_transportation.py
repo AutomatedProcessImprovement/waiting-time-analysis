@@ -1,4 +1,4 @@
-from process_waste import WAITING_TIME_BATCHING_KEY
+from process_waste import WAITING_TIME_BATCHING_KEY, WAITING_TIME_TOTAL_KEY, WAITING_TIME_CONTENTION_KEY
 from process_waste.transportation import identify
 
 
@@ -13,5 +13,7 @@ def test_identify(assets_path):
     assert WAITING_TIME_BATCHING_KEY in result['handoff'].columns
     assert not result['handoff'][WAITING_TIME_BATCHING_KEY].isna().all()
     assert not result['handoff'][WAITING_TIME_BATCHING_KEY].isnull().all()
+
+    # assert (result['handoff'][WAITING_TIME_TOTAL_KEY] < result['handoff'][WAITING_TIME_CONTENTION_KEY]).sum() == 0
 
 
