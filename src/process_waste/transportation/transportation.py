@@ -6,7 +6,7 @@ from . import handoff
 from . import pingpong
 from .. import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
 from ..core import core
-from ..waiting_time import batching, contention
+from ..waiting_time import batching
 
 
 def identify(log_path: Path, parallel_run=True) -> dict:

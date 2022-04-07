@@ -23,6 +23,7 @@ TRANSITION_KEY = 'lifecycle:transition'
 WAITING_TIME_TOTAL_KEY = 'wt_total'
 WAITING_TIME_BATCHING_KEY = 'wt_batching'
 WAITING_TIME_CONTENTION_KEY = 'wt_contention'
+WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 
 default_configuration = Configuration(
     log_ids=EventLogIDs(
@@ -110,18 +111,18 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-            for (case_id, case) in tqdm(log_grouped, desc='submitting tasks for concurrent execution'):
+            for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
                 case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
                 handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id, log=log)
                 handles.append(handle)
 
-        for h in tqdm(handles, desc='waiting for tasks to finish'):
+        for h in tqdm(handles, desc='Waiting for tasks to finish'):
             done = h.done()
             result = h.result()
             if done and not result.empty:
                 all_items.append(result)
     else:
-        for (case_id, case) in tqdm(log_grouped, desc='processing cases'):
+        for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
             case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
             result = identify_fn_per_case(case, parallel_activities, case_id, log=log)
             if result is not None:
@@ -148,9 +149,13 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
         if WAITING_TIME_BATCHING_KEY in group.columns:
             group_wt_batching = group[WAITING_TIME_BATCHING_KEY].sum()
 
+        group_wt_prioritization = 0
+        if WAITING_TIME_PRIORITIZATION_KEY in group.columns:
+            group_wt_prioritization = group[WAITING_TIME_PRIORITIZATION_KEY].sum()
+
         group_wt_contention = 0
         if WAITING_TIME_CONTENTION_KEY in group.columns:
-            group_wt_contention = group[WAITING_TIME_CONTENTION_KEY].sum()
+            group_wt_contention = pd.to_timedelta(group[WAITING_TIME_CONTENTION_KEY]).sum()
 
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
@@ -163,7 +168,8 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
             'cases': [group_case_id],
             WAITING_TIME_TOTAL_KEY: [group_wt_total],
             WAITING_TIME_BATCHING_KEY: [group_wt_batching],
-            WAITING_TIME_CONTENTION_KEY: [group_wt_contention]
+            WAITING_TIME_PRIORITIZATION_KEY: [group_wt_prioritization],
+            WAITING_TIME_CONTENTION_KEY: [group_wt_contention],
         })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result

@@ -3,8 +3,9 @@ from typing import Dict, Optional
 import click
 import pandas as pd
 
-from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY
-from process_waste.waiting_time import contention
+from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
+    WAITING_TIME_PRIORITIZATION_KEY
+from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
 
 
 def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
@@ -67,7 +68,8 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
             'handoff_type': [records['handoff_type'].iloc[0]],
             WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
             WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
-            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()]
+            WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
+            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
         })], ignore_index=True)
     return handoff_with_frequency
 
@@ -105,17 +107,12 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
         if batch_column_key in destination.index:
             waiting_time_batch = destination[batch_column_key]
 
-        # waiting time due to contention: we take the WT of the destination activity only,
+        # waiting time due to contention and prioritization: we take the WT of the destination activity only,
         # because the WT of the source activity isn't related to this handoff
-        # TODO: confirm this computation
-        # waiting_time_contention = pd.Timedelta(0)
-        # if WAITING_TIME_CONTENTION_KEY in destination.index:
-        #     waiting_time_contention = destination[WAITING_TIME_CONTENTION_KEY]
-        #
-        contention.contention_for_event(loc + 1, log)
-        waiting_time_contention = log.loc[loc + 1, WAITING_TIME_CONTENTION_KEY]
-        if pd.isna(waiting_time_contention):
-            waiting_time_contention = pd.Timedelta(0)
+        source_index = pd.Index([loc + 1])
+        detect_prioritization_or_contention(source_index, log)
+        waiting_time_prioritization = log.loc[source_index, WAITING_TIME_PRIORITIZATION_KEY].values.sum()
+        waiting_time_contention = log.loc[source_index, WAITING_TIME_CONTENTION_KEY].values.sum()
 
         # handoff type
         if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
@@ -132,7 +129,8 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
             'handoff_type': [handoff_type],
             WAITING_TIME_TOTAL_KEY: [waiting_time],
             WAITING_TIME_BATCHING_KEY: [waiting_time_batch],
-            WAITING_TIME_CONTENTION_KEY: [waiting_time_contention]
+            WAITING_TIME_PRIORITIZATION_KEY: [waiting_time_prioritization],
+            WAITING_TIME_CONTENTION_KEY: [waiting_time_contention],
         })
         handoffs = pd.concat([handoffs, handoff], ignore_index=True)
 
