@@ -1,3 +1,4 @@
+import click
 import pandas as pd
 
 from batch_processing_analysis.processing_analysis import BatchProcessingAnalysis
@@ -24,7 +25,11 @@ def run_analysis(event_log: pd.DataFrame,
     config.log_ids = log_ids
     config.PATH_R_EXECUTABLE = rscript_path
     config.report_batch_checkpoints = True
-    return BatchProcessingAnalysis(event_log, config).analyze_batches()
+    try:
+        return BatchProcessingAnalysis(event_log, config).analyze_batches()
+    except Exception as e:
+        click.echo(f'BatchProcessingAnalysis failed with exception: {e}')
+        raise e
 
 
 @print_section_boundaries('Batch analysis')

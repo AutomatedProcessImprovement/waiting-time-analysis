@@ -13,5 +13,3 @@ def test_identify(assets_path):
     assert WAITING_TIME_BATCHING_KEY in result['handoff'].columns
     assert not result['handoff'][WAITING_TIME_BATCHING_KEY].isna().all()
     assert not result['handoff'][WAITING_TIME_BATCHING_KEY].isnull().all()
-
-

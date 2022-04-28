@@ -24,9 +24,11 @@ def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activi
     return False
 
 
-def _identify_ping_pongs_per_case(case: pd.DataFrame, parallel_activities: Dict[str, set],
-                                  case_id: str, enabled_on: bool = True,
-                                  log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    parallel_activities = kwargs['parallel_activities']
+    case_id = kwargs['case_id']
+    enabled_on = kwargs['enabled_on']
+
     case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
 

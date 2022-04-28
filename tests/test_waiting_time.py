@@ -30,12 +30,12 @@ def test_detect_contention(assets_path):
     event_log = core.read_csv(log_path)
 
     event_index = pd.Index([1])
-    result = detect_prioritization_or_contention(event_index, event_log)
+    detect_prioritization_or_contention(event_index, event_log)
 
-    assert result is not None
-    assert WAITING_TIME_CONTENTION_KEY in result.columns
-    assert result[WAITING_TIME_CONTENTION_KEY].sum() > pd.Timedelta(0)
-    assert result.loc[event_index, WAITING_TIME_CONTENTION_KEY].sum() == pd.Timedelta(hours=2, minutes=30)
+    assert event_log is not None
+    assert WAITING_TIME_CONTENTION_KEY in event_log.columns
+    assert event_log[WAITING_TIME_CONTENTION_KEY].sum() > pd.Timedelta(0)
+    assert event_log.loc[event_index, WAITING_TIME_CONTENTION_KEY].sum() == pd.Timedelta(hours=2, minutes=30)
 
 
 def test_detect_prioritization_or_contention(assets_path):
@@ -43,13 +43,13 @@ def test_detect_prioritization_or_contention(assets_path):
     event_log = core.read_csv(log_path)
 
     event_index = pd.Index([2])
-    result = detect_prioritization_or_contention(event_index, event_log)
+    detect_prioritization_or_contention(event_index, event_log)
 
-    assert result is not None
-    assert WAITING_TIME_PRIORITIZATION_KEY in result.columns
-    assert WAITING_TIME_CONTENTION_KEY in result.columns
-    assert result[WAITING_TIME_PRIORITIZATION_KEY].sum() > pd.Timedelta(0)
-    assert result[WAITING_TIME_CONTENTION_KEY].sum() > pd.Timedelta(0)
+    assert event_log is not None
+    assert WAITING_TIME_PRIORITIZATION_KEY in event_log.columns
+    assert WAITING_TIME_CONTENTION_KEY in event_log.columns
+    assert event_log[WAITING_TIME_PRIORITIZATION_KEY].sum() > pd.Timedelta(0)
+    assert event_log[WAITING_TIME_CONTENTION_KEY].sum() > pd.Timedelta(0)
 
 
 def test_prioritization_and_contention_analysis(assets_path):

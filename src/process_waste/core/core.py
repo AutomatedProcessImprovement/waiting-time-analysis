@@ -24,6 +24,7 @@ WAITING_TIME_TOTAL_KEY = 'wt_total'
 WAITING_TIME_BATCHING_KEY = 'wt_batching'
 WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
+WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 
 default_configuration = Configuration(
     log_ids=EventLogIDs(
@@ -105,15 +106,24 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
 
 def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identify_fn_per_case, join_fn,
                   parallel_run=True) -> Optional[pd.DataFrame]:
+    from process_waste.calendar import calendar
+
     log_grouped = log.groupby(by=CASE_KEY)
     all_items = []
+    log_calendar = calendar.make(log, granularity=15)
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
                 case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
-                handle = executor.submit(identify_fn_per_case, case, parallel_activities, case_id, log=log)
+                handle = executor.submit(identify_fn_per_case,
+                                         case,
+                                         enabled_on=True,
+                                         parallel_activities=parallel_activities,
+                                         case_id=case_id,
+                                         log_calendar=log_calendar,
+                                         log=log)
                 handles.append(handle)
 
         for h in tqdm(handles, desc='Waiting for tasks to finish'):
@@ -124,7 +134,12 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
     else:
         for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
             case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
-            result = identify_fn_per_case(case, parallel_activities, case_id, log=log)
+            result = identify_fn_per_case(case,
+                                          enabled_on=True,
+                                          parallel_activities=parallel_activities,
+                                          case_id=case_id,
+                                          log_calendar=log_calendar,
+                                          log=log)
             if result is not None:
                 all_items.append(result)
 
@@ -157,6 +172,10 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
         if WAITING_TIME_CONTENTION_KEY in group.columns:
             group_wt_contention = pd.to_timedelta(group[WAITING_TIME_CONTENTION_KEY]).sum()
 
+        group_wt_unavailability = 0
+        if WAITING_TIME_UNAVAILABILITY_KEY in group.columns:
+            group_wt_unavailability = pd.to_timedelta(group[WAITING_TIME_UNAVAILABILITY_KEY]).sum()
+
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
         result = pd.concat([result, pd.DataFrame({
@@ -170,6 +189,7 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
             WAITING_TIME_BATCHING_KEY: [group_wt_batching],
             WAITING_TIME_PRIORITIZATION_KEY: [group_wt_prioritization],
             WAITING_TIME_CONTENTION_KEY: [group_wt_contention],
+            WAITING_TIME_UNAVAILABILITY_KEY: [group_wt_unavailability]
         })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result

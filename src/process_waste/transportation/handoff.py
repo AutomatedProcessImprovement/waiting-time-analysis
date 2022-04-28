@@ -4,8 +4,9 @@ import click
 import pandas as pd
 
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY
+    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY
 from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
+from process_waste.waiting_time.resource import detect_waiting_time_due_to_unavailability
 
 
 def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
@@ -19,10 +20,14 @@ def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_ru
     return result
 
 
-def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, parallel_activities: Dict[str, set],
-                                                case_id: str, enabled_on: bool = True,
-                                                log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
+
+    parallel_activities = kwargs['parallel_activities']
+    case_id = kwargs['case_id']
+    log_calendar = kwargs['log_calendar']
+    enabled_on = kwargs['enabled_on']
+    log = kwargs['log']
 
     case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
     case.reset_index()
@@ -32,7 +37,7 @@ def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, parallel_act
     potential_handoffs = case[~case['handoff_type'].isna()]
 
     handoffs_index = potential_handoffs.index
-    handoffs = _make_report(case, enabled_on, handoffs_index, log)
+    handoffs = _make_report(case, enabled_on, handoffs_index, log_calendar, log)
 
     handoffs_with_frequency = _calculate_frequency_and_duration(handoffs)
 
@@ -70,11 +75,15 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
             WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
             WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
             WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
+            WAITING_TIME_UNAVAILABILITY_KEY: [records[WAITING_TIME_UNAVAILABILITY_KEY].sum()]
         })], ignore_index=True)
     return handoff_with_frequency
 
 
-def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
+def _make_report(case: pd.DataFrame,
+                 enabled_on: bool,
+                 handoffs_index: pd.Index,
+                 log_calendar: dict,
                  log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
@@ -110,9 +119,28 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
         # waiting time due to contention and prioritization: we take the WT of the destination activity only,
         # because the WT of the source activity isn't related to this handoff
         source_index = pd.Index([loc + 1])
+
         detect_prioritization_or_contention(source_index, log)
         waiting_time_prioritization = log.loc[source_index, WAITING_TIME_PRIORITIZATION_KEY].values.sum()
         waiting_time_contention = log.loc[source_index, WAITING_TIME_CONTENTION_KEY].values.sum()
+
+        detect_waiting_time_due_to_unavailability(source_index, log, log_calendar)
+        waiting_time_unavailability = log.loc[source_index, WAITING_TIME_UNAVAILABILITY_KEY].values.sum()
+
+        # assert waiting_time_prioritization <= waiting_time, \
+        #     f'WT due to prioritization cannot be greater than total WT: ' \
+        #     f'{waiting_time_prioritization}, ' \
+        #     f'{waiting_time}'
+        #
+        # assert waiting_time_contention <= waiting_time, \
+        #     f'WT due to contention cannot be greater than total WT: ' \
+        #     f'{waiting_time_contention}, ' \
+        #     f'{waiting_time}'
+        #
+        # assert waiting_time_unavailability <= waiting_time, \
+        #     f'Resource unavailability WT cannot be greater than total WT: ' \
+        #     f'{waiting_time_unavailability}, ' \
+        #     f'{waiting_time}'
 
         # handoff type
         if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
@@ -131,6 +159,7 @@ def _make_report(case: pd.DataFrame, enabled_on: bool, handoffs_index: pd.Index,
             WAITING_TIME_BATCHING_KEY: [waiting_time_batch],
             WAITING_TIME_PRIORITIZATION_KEY: [waiting_time_prioritization],
             WAITING_TIME_CONTENTION_KEY: [waiting_time_contention],
+            WAITING_TIME_UNAVAILABILITY_KEY: [waiting_time_unavailability]
         })
         handoffs = pd.concat([handoffs, handoff], ignore_index=True)
 

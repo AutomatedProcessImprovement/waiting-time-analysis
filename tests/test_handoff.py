@@ -2,6 +2,7 @@ import pytest
 
 from process_waste import add_enabled_timestamp
 from process_waste import handoff
+from process_waste.calendar import calendar
 from process_waste.core import core
 from process_waste.core import read_csv
 from process_waste.transportation.handoff import _identify_handoffs_per_case_and_make_report, _mark_strict_handoffs
@@ -28,7 +29,14 @@ def test_strict_handoffs_occurred(assets_path):
 def test_identify_self_handoff(event_log):
     parallel_activities = {}
     case_id = '1'
-    result = _identify_handoffs_per_case_and_make_report(event_log, parallel_activities, case_id, log=event_log)
+    log_calendar = calendar.make(event_log, granularity=15)
+    result = _identify_handoffs_per_case_and_make_report(
+        event_log,
+        parallel_activities=parallel_activities,
+        case_id=case_id,
+        log=event_log,
+        log_calendar=log_calendar,
+        enabled_on=True)
     assert 'handoff_type' in result.columns
     assert 'self' in result['handoff_type'].values
     assert 'strict' in result['handoff_type'].values

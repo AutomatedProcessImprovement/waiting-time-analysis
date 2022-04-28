@@ -22,7 +22,6 @@ def identify(log_path: Path, parallel_run=True) -> dict:
     log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
 
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
-
     handoff_report = handoff.identify(log, parallel_activities, parallel_run)
     pingpong_report = pingpong.identify(log, parallel_activities, parallel_run)
 

@@ -84,7 +84,11 @@ def test_ping_pong_identification(assets_path):
         core.add_enabled_timestamp(case)
         assert case is not None and len(case) > 0
 
-        result = pingpong._identify_ping_pongs_per_case(case, parallel_activities, case_id='1')
+        result = pingpong._identify_ping_pongs_per_case(
+            case,
+            parallel_activities=parallel_activities,
+            case_id='1',
+            enabled_on=True)
         assert ((result.reset_index() == expected.reset_index()).all()).all()
 
 

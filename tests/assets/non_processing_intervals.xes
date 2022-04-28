@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<log xes.version="1849-2016" xes.features="nested-attributes" xmlns="http://www.xes-standard.org/">
+	<extension name="Time" prefix="time" uri="http://www.xes-standard.org/time.xesext" />
+	<extension name="Concept" prefix="concept" uri="http://www.xes-standard.org/concept.xesext" />
+	<extension name="Organizational" prefix="org" uri="http://www.xes-standard.org/org.xesext" />
+	<string key="origin" value="csv" />
+	<string key="PM4PY_TYPE" value="lifecycle" />
+	<trace>
+		<string key="concept:name" value="1" />
+		<event>
+			<string key="concept:name" value="A" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 09:00:00+00:00" />
+			<string key="lifecycle:transition" value="start" />
+			<int key="@@custom_lif_id" value="0" />
+			<int key="@@origin_ev_idx" value="0" />
+		</event>
+		<event>
+			<string key="concept:name" value="A" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 10:00:00+00:00" />
+			<string key="lifecycle:transition" value="complete" />
+			<int key="@@custom_lif_id" value="1" />
+			<int key="@@origin_ev_idx" value="0" />
+		</event>
+		<event>
+			<string key="concept:name" value="A" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 10:00:00+00:00" />
+			<string key="lifecycle:transition" value="start" />
+			<int key="@@custom_lif_id" value="0" />
+			<int key="@@origin_ev_idx" value="1" />
+		</event>
+		<event>
+			<string key="concept:name" value="A" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 11:30:00+00:00" />
+			<string key="lifecycle:transition" value="complete" />
+			<int key="@@custom_lif_id" value="1" />
+			<int key="@@origin_ev_idx" value="1" />
+		</event>
+	</trace>
+	<trace>
+		<string key="concept:name" value="2" />
+		<event>
+			<string key="concept:name" value="B" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 12:00:00+00:00" />
+			<string key="lifecycle:transition" value="start" />
+			<int key="@@custom_lif_id" value="0" />
+			<int key="@@origin_ev_idx" value="0" />
+		</event>
+		<event>
+			<string key="concept:name" value="B" />
+			<string key="org:resource" value="R1" />
+			<string key="time:timestamp" value="2011-01-01 18:00:00+00:00" />
+			<string key="lifecycle:transition" value="complete" />
+			<int key="@@custom_lif_id" value="1" />
+			<int key="@@origin_ev_idx" value="0" />
+		</event>
+	</trace>
+</log>
