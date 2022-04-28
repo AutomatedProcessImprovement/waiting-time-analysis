@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from process_waste.calendar.intervals import pd_interval_to_interval
 from process_waste.core import core
@@ -33,6 +34,7 @@ class TestResource:
         result = non_processing_intervals(event_index, event_log)
         assert result == expected_result
 
+    @pytest.mark.integration
     def test_run_analysis(self, assets_path):
         log_path = assets_path / 'PurchasingExample.csv'
         event_log = core.read_csv(log_path)

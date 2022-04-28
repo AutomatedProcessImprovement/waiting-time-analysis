@@ -1,7 +1,7 @@
 import click
 import pandas as pd
 
-from batch_processing_analysis.processing_analysis import BatchProcessingAnalysis
+from batch_processing_analysis.analysis import BatchProcessingAnalysis
 from batch_processing_analysis.config import EventLogIDs, Configuration
 from process_waste import CASE_KEY, ACTIVITY_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, print_section_boundaries
 from process_waste.core import core

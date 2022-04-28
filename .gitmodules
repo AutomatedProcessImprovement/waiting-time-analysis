@@ -4,3 +4,6 @@
 [submodule "vendor/start-time-estimator"]
 	path = vendor/start-time-estimator
 	url = https://github.com/AutomatedProcessImprovement/start-time-estimator.git
+[submodule "vendor/wittgenstein"]
+	path = vendor/wittgenstein
+	url = https://github.com/david-chapela/wittgenstein.git

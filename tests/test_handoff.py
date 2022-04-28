@@ -8,6 +8,7 @@ from process_waste.core import read_csv
 from process_waste.transportation.handoff import _identify_handoffs_per_case_and_make_report, _mark_strict_handoffs
 
 
+@pytest.mark.integration
 @pytest.mark.log_path('PurchasingExample.csv')
 def test_negative_duration(event_log, config):
     parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
