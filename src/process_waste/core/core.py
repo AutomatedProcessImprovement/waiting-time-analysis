@@ -25,6 +25,7 @@ WAITING_TIME_BATCHING_KEY = 'wt_batching'
 WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
+WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 
 default_configuration = Configuration(
     log_ids=EventLogIDs(
@@ -176,6 +177,10 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
         if WAITING_TIME_UNAVAILABILITY_KEY in group.columns:
             group_wt_unavailability = pd.to_timedelta(group[WAITING_TIME_UNAVAILABILITY_KEY]).sum()
 
+        group_wt_extraneous = 0
+        if WAITING_TIME_EXTRANEOUS_KEY in group.columns:
+            group_wt_extraneous = pd.to_timedelta(group[WAITING_TIME_EXTRANEOUS_KEY]).sum()
+
         group_frequency: float = group['frequency'].sum()
         group_case_id: str = ','.join(group['case_id'].astype(str).unique())
         result = pd.concat([result, pd.DataFrame({
@@ -189,7 +194,8 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
             WAITING_TIME_BATCHING_KEY: [group_wt_batching],
             WAITING_TIME_PRIORITIZATION_KEY: [group_wt_prioritization],
             WAITING_TIME_CONTENTION_KEY: [group_wt_contention],
-            WAITING_TIME_UNAVAILABILITY_KEY: [group_wt_unavailability]
+            WAITING_TIME_UNAVAILABILITY_KEY: [group_wt_unavailability],
+            WAITING_TIME_EXTRANEOUS_KEY: [group_wt_extraneous]
         })], ignore_index=True)
     result.reset_index(drop=True, inplace=True)
     return result
