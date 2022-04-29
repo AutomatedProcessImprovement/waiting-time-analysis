@@ -2,8 +2,7 @@
 
 python3 -m venv venv
 source venv/bin/activate
-pip install poetry
-poetry install
+pip install .
 
 cd vendor/start-time-estimator; pip install -e .; cd ../..
 cd vendor/batch-processing-analysis; pip install -e .; cd ../..
