@@ -1,5 +1,7 @@
 # Process Waste
 
+![CI Status](https://github.com/AutomatedProcessImprovement/process-waste/actions/workflows/main.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/pm4py-wrapper/badge.svg?branch=main)](https://coveralls.io/github/AutomatedProcessImprovement/pm4py-wrapper?branch=main)
+
 A tool to identify waste in a business process from an event log.
 
 ## Installation
