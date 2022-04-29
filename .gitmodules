@@ -7,3 +7,9 @@
 [submodule "vendor/wittgenstein"]
 	path = vendor/wittgenstein
 	url = https://github.com/david-chapela/wittgenstein.git
+[submodule "vendor/Prosimos"]
+	path = vendor/Prosimos
+	url = https://github.com/AutomatedProcessImprovement/Prosimos.git
+[submodule "vendor/bama"]
+	path = vendor/bama
+	url = https://github.com/nielsmartin/bama.git

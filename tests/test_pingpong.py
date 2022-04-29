@@ -92,6 +92,7 @@ def test_ping_pong_identification(assets_path):
         assert ((result.reset_index() == expected.reset_index()).all()).all()
 
 
+@pytest.mark.integration
 @pytest.mark.log_path('PurchasingExample.csv')
 def test_ping_pong_identify(event_log):
     parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
