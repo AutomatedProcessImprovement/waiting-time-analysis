@@ -18,7 +18,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v3
+      - name: Setup Python
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -46,19 +47,12 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v3
+      - name: Setup Python
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Download the build
+      - name: Download artifacts
         uses: actions/download-artifact@v3
-        with:
-          name: build-${{ matrix.python-version }}
-          path: dist
-      - name: Download the environment
-        uses: actions/download-artifact@v3
-        with:
-          name: venv
-          path: venv
       - name: Test the build
         run: |
           source venv/bin/activate
