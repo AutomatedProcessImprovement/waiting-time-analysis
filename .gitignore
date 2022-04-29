@@ -13,3 +13,4 @@ data/
 results/
 dist/
 venv*
+.coverage*
