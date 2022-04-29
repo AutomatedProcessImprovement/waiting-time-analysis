@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           source venv/bin/activate
-          pytest -v --cov=. --junitxml=pytest_coverage.xml --cov-report=term | tee pytest-coverage.log
+          pytest -v --cov=. --junitxml=pytest_coverage.xml --cov-report=term tests | tee pytest-coverage.log
       - name: Upload the coverage report
         uses: actions/upload-artifact@v3
         with:

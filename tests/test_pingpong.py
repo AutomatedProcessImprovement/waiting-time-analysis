@@ -6,6 +6,7 @@ import pytest
 from process_waste import core, pingpong, WAITING_TIME_TOTAL_KEY
 
 
+@pytest.mark.integration
 def test_ping_pong_identification(assets_path):
     args = [
         {
