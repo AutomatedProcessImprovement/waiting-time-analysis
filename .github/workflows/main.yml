@@ -39,6 +39,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pytest_coverage.xml
+          path: pytest_coverage.xml
       - name: Test Coverage
         uses: MishaKav/pytest-coverage-comment@main
         with:
