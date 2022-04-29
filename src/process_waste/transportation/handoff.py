@@ -130,6 +130,17 @@ def _make_report(case: pd.DataFrame,
 
         waiting_time_extraneous = waiting_time - waiting_time_batch - waiting_time_prioritization - waiting_time_contention - waiting_time_unavailability
 
+        if pd.isna(waiting_time_batch):
+            waiting_time_batch = pd.Timedelta(0)
+        if pd.isna(waiting_time_prioritization):
+            waiting_time_prioritization = pd.Timedelta(0)
+        if pd.isna(waiting_time_contention):
+            waiting_time_contention = pd.Timedelta(0)
+        if pd.isna(waiting_time_unavailability):
+            waiting_time_unavailability = pd.Timedelta(0)
+        if pd.isna(waiting_time_extraneous):
+            waiting_time_extraneous = pd.Timedelta(0)
+
         # handoff type
         if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
             handoff_type = 'self'
