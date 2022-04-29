@@ -41,18 +41,7 @@ jobs:
         run: |
           Rscript --version
 
-      - name: Install R dependencies
-        shell: bash
-        run: |
-          Rscript -e 'install.packages("lubridate")'
-          Rscript -e 'install.packages("stringr")'
-          Rscript -e 'install.packages("tidyr")'
-          Rscript -e 'install.packages("arules")'
-          Rscript -e 'install.packages("arulesSequences")'
-          Rscript -e 'install.packages("bupaR")'
-          Rscript -e 'install.packages("vendor/bama", repos=NULL, type="source")'
-
-      - name: Install Python dependencies
+      - name: Install Python and R dependencies
         shell: bash
         run: |
           ./install.sh
