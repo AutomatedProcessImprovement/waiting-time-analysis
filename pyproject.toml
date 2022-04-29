@@ -49,5 +49,8 @@ markers = [
     "integration: mark an integration test",
 ]
 
+[tool.coverage.run]
+relative_files = true
+
 [virtualenvs]
 in-project = true

@@ -8,4 +8,3 @@ poetry install
 cd vendor/start-time-estimator; pip install -e .; cd ../..
 cd vendor/batch-processing-analysis; pip install -e .; cd ../..
 cd vendor/Prosimos; pip install -e .; cd ../..
-pip install .
