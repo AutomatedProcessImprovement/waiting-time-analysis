@@ -71,7 +71,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 name = "coverage"
 version = "6.3.2"
 description = "Code coverage measurement for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -308,7 +308,7 @@ testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.
 name = "pytest-cov"
 version = "3.0.0"
 description = "Pytest plugin for measuring coverage."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -485,7 +485,7 @@ resolved_reference = "e21c0bda5684f31f4d4f3d53c05ad51a86789136"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "04301f9087c4e134efaa26f91b2573528e7b3d921863c2071d1610b17327baa7"
+content-hash = "1bbd4f286a28ad9021ad01df979e8d16921e5d97a1f5fb588c1439212afd5292"
 
 [metadata.files]
 atomicwrites = [

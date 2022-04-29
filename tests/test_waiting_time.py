@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from process_waste import WAITING_TIME_CONTENTION_KEY, WAITING_TIME_PRIORITIZATION_KEY
 from process_waste.core import core
@@ -7,6 +8,7 @@ from process_waste.waiting_time.prioritization_and_contention import detect_prio
     run_analysis as prioritization_and_contention_analysis
 
 
+@pytest.mark.integration
 def test_batch_processing_analysis(assets_path):
     preprocessed_log_path = assets_path / 'PurchasingExample.csv'
 
