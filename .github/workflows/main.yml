@@ -76,8 +76,8 @@ jobs:
           pytest-coverage-path: pytest-coverage.log
           junitxml-path: pytest_coverage.xml
 
-      - name: Coveralls
-        uses: AndreMiras/coveralls-python-action@develop
+      - name: Submit to Coveralls
+        uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.COVERALLS_REPO_TOKEN }}
           flag-name: All Tests
