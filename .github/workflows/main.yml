@@ -111,7 +111,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    container: nokal/process-waste:latest
+    needs: [ docker-build ]
+    container: ${{ env.DOCKERHUB_REPO }}:latest
     steps:
       - name: Check R installation
         shell: bash
@@ -120,12 +121,14 @@ jobs:
 
       - name: Smoke Test
         shell: bash
+        working-directory: /usr/src/app
         run: |
           source venv/bin/activate
           process-waste --help
 
       - name: Test the build
         shell: bash
+        working-directory: /usr/src/app
         run: |
           source venv/bin/activate
           pytest -n auto -v --durations=0 --cov=. --junitxml=pytest_coverage.xml --cov-report=term tests | tee pytest-coverage.log
