@@ -112,7 +112,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: [ docker-build ]
-    container: ${{ env.DOCKERHUB_REPO }}:latest
+    container: ${{ DOCKERHUB_REPO }}:latest
     steps:
       - name: Check R installation
         shell: bash
