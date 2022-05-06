@@ -6,7 +6,7 @@ import pandas as pd
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
 from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
-from process_waste.waiting_time.resource import detect_waiting_time_due_to_unavailability
+from process_waste.waiting_time.resource_unavailability import detect_waiting_time_due_to_unavailability
 
 
 def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
@@ -112,32 +112,33 @@ def _make_report(case: pd.DataFrame,
 
         # waiting time due to batching: we take the WT of the destination activity only,
         # because the WT of the source activity isn't related to this handoff
-        # TODO: confirm this computation
         waiting_time_batch = pd.Timedelta(0)
         if batch_column_key in destination.index:
             waiting_time_batch = destination[batch_column_key]
+        if pd.isna(waiting_time_batch):
+            waiting_time_batch = pd.Timedelta(0)
 
         # waiting time due to contention and prioritization: we take the WT of the destination activity only,
         # because the WT of the source activity isn't related to this handoff
         source_index = pd.Index([loc + 1])
 
         detect_prioritization_or_contention(source_index, log)
+
         waiting_time_prioritization = log.loc[source_index, WAITING_TIME_PRIORITIZATION_KEY].values.sum()
-        waiting_time_contention = log.loc[source_index, WAITING_TIME_CONTENTION_KEY].values.sum()
-
-        detect_waiting_time_due_to_unavailability(source_index, log, log_calendar)
-        waiting_time_unavailability = log.loc[source_index, WAITING_TIME_UNAVAILABILITY_KEY].values.sum()
-
-        waiting_time_extraneous = waiting_time - waiting_time_batch - waiting_time_prioritization - waiting_time_contention - waiting_time_unavailability
-
-        if pd.isna(waiting_time_batch):
-            waiting_time_batch = pd.Timedelta(0)
         if pd.isna(waiting_time_prioritization):
             waiting_time_prioritization = pd.Timedelta(0)
+
+        waiting_time_contention = log.loc[source_index, WAITING_TIME_CONTENTION_KEY].values.sum()
         if pd.isna(waiting_time_contention):
             waiting_time_contention = pd.Timedelta(0)
+
+        detect_waiting_time_due_to_unavailability(source_index, log, log_calendar)
+
+        waiting_time_unavailability = log.loc[source_index, WAITING_TIME_UNAVAILABILITY_KEY].values.sum()
         if pd.isna(waiting_time_unavailability):
             waiting_time_unavailability = pd.Timedelta(0)
+
+        waiting_time_extraneous = waiting_time - waiting_time_batch - waiting_time_prioritization - waiting_time_contention - waiting_time_unavailability
         if pd.isna(waiting_time_extraneous):
             waiting_time_extraneous = pd.Timedelta(0)
 
