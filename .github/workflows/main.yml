@@ -112,7 +112,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: [ docker-build ]
-    container: ${{ DOCKERHUB_REPO }}:latest
+    container: nokal/process-waste:latest
     steps:
       - name: Check R installation
         shell: bash
