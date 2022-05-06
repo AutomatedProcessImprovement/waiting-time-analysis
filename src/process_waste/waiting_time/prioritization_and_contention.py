@@ -1,9 +1,9 @@
 import pandas as pd
 from tqdm import tqdm
 
-from process_waste import START_TIMESTAMP_KEY, RESOURCE_KEY, WAITING_TIME_CONTENTION_KEY, \
+from process_waste import START_TIMESTAMP_KEY, WAITING_TIME_CONTENTION_KEY, \
     END_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_PRIORITIZATION_KEY
-from process_waste.waiting_time.resource import other_processing_events_during_waiting_time_of_event
+from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
 
 
 def run_analysis(log: pd.DataFrame) -> pd.DataFrame:

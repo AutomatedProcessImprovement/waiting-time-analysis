@@ -3,12 +3,12 @@ from typing import List
 import pandas as pd
 from tqdm import tqdm
 
-import process_waste.calendar.intervals
 from process_waste import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, RESOURCE_KEY, END_TIMESTAMP_KEY, \
     WAITING_TIME_UNAVAILABILITY_KEY
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
-from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals
+from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals, \
+    intersect_intervals, overall_duration
 
 
 def run_analysis(log: pd.DataFrame) -> pd.DataFrame:
@@ -113,10 +113,10 @@ def detect_waiting_time_due_to_unavailability(
         tz = start_time.tz if start_time.tz else 'UTC'
         enabled_time = enabled_time.tz_localize(tz)
 
-    wt_intervals = process_waste.calendar.intervals.pd_interval_to_interval(pd.Interval(enabled_time, start_time))
-    working_hours_during_wt = process_waste.calendar.intervals.intersect_intervals(wt_intervals, overall_work_intervals)
-    unavailability_intervals = process_waste.calendar.intervals.subtract_intervals(idle_intervals, working_hours_during_wt)
-    wt_due_to_resource_unavailability = process_waste.calendar.intervals.overall_duration(unavailability_intervals)
+    wt_intervals = pd_interval_to_interval(pd.Interval(enabled_time, start_time))
+    working_hours_during_wt = intersect_intervals(wt_intervals, overall_work_intervals)
+    unavailability_intervals = subtract_intervals(idle_intervals, working_hours_during_wt)
+    wt_due_to_resource_unavailability = overall_duration(unavailability_intervals)
     log.loc[event_index, WAITING_TIME_UNAVAILABILITY_KEY] = wt_due_to_resource_unavailability
 
 

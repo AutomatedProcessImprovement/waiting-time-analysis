@@ -3,7 +3,7 @@ import pytest
 
 from process_waste.calendar.intervals import pd_interval_to_interval
 from process_waste.core import core
-from process_waste.waiting_time.resource import non_processing_intervals, run_analysis
+from process_waste.waiting_time.resource_unavailability import non_processing_intervals, run_analysis
 
 
 class TestResource:
