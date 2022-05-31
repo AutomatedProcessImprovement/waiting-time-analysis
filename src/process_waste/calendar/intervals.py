@@ -191,7 +191,7 @@ def pd_interval_to_interval(interval: pd.Interval) -> [Interval]:
                      right_time='23:59:59.999999')
         )
 
-        new_left_of_the_rest = interval.left.replace(hour=0, minute=0, microsecond=0) + pd.Timedelta(days=1)
+        new_left_of_the_rest = interval.left.replace(hour=0, minute=0, second=0, microsecond=0) + pd.Timedelta(days=1)
         the_rest = pd.Interval(new_left_of_the_rest, interval.right)
 
         result.extend(pd_interval_to_interval(the_rest))
