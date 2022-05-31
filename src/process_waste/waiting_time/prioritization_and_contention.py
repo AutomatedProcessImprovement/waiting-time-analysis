@@ -42,3 +42,9 @@ def detect_prioritization_or_contention(event_index: pd.Index, log: pd.DataFrame
     # updating the dataframe
     log.loc[event_index, WAITING_TIME_PRIORITIZATION_KEY] = wt_prioritization
     log.loc[event_index, WAITING_TIME_CONTENTION_KEY] = wt_contention
+
+
+def detect_prioritizations_and_contentions(log: pd.DataFrame):
+    for i in log.index:
+        event_index = pd.Index([i])
+        detect_prioritization_or_contention(event_index, log)

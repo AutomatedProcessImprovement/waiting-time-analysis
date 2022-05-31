@@ -120,61 +120,7 @@ def detect_waiting_time_due_to_unavailability(
     log.loc[event_index, WAITING_TIME_UNAVAILABILITY_KEY] = wt_due_to_resource_unavailability
 
 
-# def _split_intervals_which_are_across_several_days(intervals: List[pd.Interval]) -> List[pd.Interval]:
-#     """
-#     Splits intervals which are across several days.
-#
-#     :param intervals: List of intervals.
-#     :return: List of intervals.
-#     """
-#     intervals_splits = []
-#     for interval in intervals:
-#         if interval.left.day != interval.right.day:
-#             new_left = interval.left
-#             new_left = new_left.replace(hour=23, minute=59, second=59, microsecond=999999)
-#             new_right = interval.right
-#             new_right = new_right.replace(hour=0, minute=0, second=0, microsecond=0)
-#             intervals_splits.extend([
-#                 pd.Interval(interval.left, new_left),
-#                 pd.Interval(new_right, interval.right)
-#             ])
-#         else:
-#             intervals_splits.append(interval)
-#     return intervals_splits
-
-
-def _subtract_intervals_from_interval(interval: pd.Interval, intervals: [pd.Interval]) -> List[pd.Interval]:
-    """
-    Subtracts all intervals from the given interval.
-
-    :param interval: Interval from which the intervals are subtracted.
-    :param intervals: Intervals that are subtracted from the given interval.
-    """
-    interval_splits = [interval]
-    for item in intervals:
-        last_split = interval_splits.pop()
-        interval_splits.extend(_subtract_interval(last_split, item))
-    interval_splits = list(set(interval_splits))
-    return interval_splits
-
-
-def _subtract_interval(interval: pd.Interval, split_interval: pd.Interval) -> List[pd.Interval]:
-    """
-    Splits an interval into two intervals.
-
-    :param interval: Interval to be split.
-    :param split_interval: Time interval that should be excluded from the interval.
-    :return: List of two intervals.
-    """
-    if (interval.left <= split_interval.left <= interval.right) and \
-            (interval.left <= split_interval.right <= interval.right):
-        result = []
-        left_interval = pd.Interval(interval.left, split_interval.left)
-        if left_interval.right != left_interval.left:
-            result.append(left_interval)
-        right_interval = pd.Interval(split_interval.right, interval.right)
-        if right_interval.right != right_interval.left:
-            result.append(right_interval)
-        return result
-    else:
-        return [interval]
+def detect_waiting_times_due_to_unavailability(log: pd.DataFrame, log_calendar: dict):
+    for i in log.index:
+        event_index = pd.Index([i])
+        detect_waiting_time_due_to_unavailability(event_index, log, log_calendar)
