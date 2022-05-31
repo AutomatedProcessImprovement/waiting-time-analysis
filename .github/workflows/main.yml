@@ -119,6 +119,11 @@ jobs:
         run: |
           Rscript --version
 
+      - name: Set up Rscript bin path
+        shell: bash
+        run: |
+          export RSCRIPT_BIN_PATH=`which Rscript`
+
       - name: Smoke Test
         shell: bash
         working-directory: /usr/src/app

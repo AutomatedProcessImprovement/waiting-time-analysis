@@ -16,3 +16,5 @@ venv*
 .coverage*
 pytest-coverage*
 pytest_coverage*
+*.secrets
+
