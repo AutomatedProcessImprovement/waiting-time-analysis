@@ -1,8 +1,10 @@
-import pandas as pd
+from typing import Optional
 
+import pandas as pd
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
-from process_waste import RESOURCE_KEY, ACTIVITY_KEY, START_TIMESTAMP_KEY, END_TIMESTAMP_KEY
+from batch_processing_analysis.config import EventLogIDs
+from process_waste import default_log_ids
 from process_waste.calendar.intervals import Interval, prosimos_interval_to_interval
 
 UNDIFFERENTIATED_RESOURCE_POOL_KEY = "undifferentiated_resource_pool"
@@ -13,7 +15,8 @@ def make(event_log: pd.DataFrame,
          min_confidence=0.1,
          desired_support=0.7,
          min_participation=0.4,
-         differentiated=True) -> dict:
+         differentiated=True,
+         log_ids: Optional[EventLogIDs] = None) -> dict:
     """
     Creates a calendar for the given event log using Prosimos. If the amount of event is too low, the results are not
     trustworthy. It's recommended to build a resource calendar for the whole resource pool instead of a single resource.
@@ -25,17 +28,21 @@ def make(event_log: pd.DataFrame,
     :param desired_support: The desired support.
     :param min_participation: The minimum participation.
     :param differentiated: Whether to mine differentiated calendars for each resource or to use a single resource pool for all resources.
+    :param log_ids: The event log IDs to use.
     :return: the calendar dictionary with the resource names as keys and the working time intervals as values.
     """
+    if not log_ids:
+        log_ids = default_log_ids
+
     calendar_factory = CalendarFactory(granularity)
     for (index, event) in event_log.iterrows():
         if differentiated:
-            resource = event[RESOURCE_KEY]
+            resource = event[log_ids.resource]
         else:
             resource = UNDIFFERENTIATED_RESOURCE_POOL_KEY
-        activity = event[ACTIVITY_KEY]
-        start_time = event[START_TIMESTAMP_KEY]
-        end_time = event[END_TIMESTAMP_KEY]
+        activity = event[log_ids.activity]
+        start_time = event[log_ids.start_time]
+        end_time = event[log_ids.end_time]
         calendar_factory.check_date_time(resource, activity, start_time)
         calendar_factory.check_date_time(resource, activity, end_time)
     calendar_candidates = calendar_factory.build_weekly_calendars(min_confidence, desired_support, min_participation)
@@ -60,5 +67,3 @@ def resource_working_hours_as_intervals(resource: str, calendar: dict) -> [Inter
 
     new_intervals = [prosimos_interval_to_interval(interval) for interval in intervals]
     return new_intervals
-
-

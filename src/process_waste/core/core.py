@@ -27,34 +27,32 @@ WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 
+default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time columns
+    case=CASE_KEY,
+    activity=ACTIVITY_KEY,
+    start_time=START_TIMESTAMP_KEY,
+    end_time=END_TIMESTAMP_KEY,
+    enabled_time=ENABLED_TIMESTAMP_KEY,
+    available_time=AVAILABLE_TIMESTAMP_KEY,
+    resource=RESOURCE_KEY,
+    lifecycle=TRANSITION_KEY,
+)
+
 default_configuration = Configuration(
-    log_ids=EventLogIDs(
-        case=CASE_KEY,
-        activity=ACTIVITY_KEY,
-        start_time=START_TIMESTAMP_KEY,
-        end_time=END_TIMESTAMP_KEY,
-        enabled_time=ENABLED_TIMESTAMP_KEY,
-        available_time=AVAILABLE_TIMESTAMP_KEY,
-        resource=RESOURCE_KEY,
-        lifecycle=TRANSITION_KEY,
-    ),
+    log_ids=default_log_ids,
     concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
     resource_availability_type=ResourceAvailabilityType.SIMPLE,
     heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
 )
 
 
-def parallel_activities_with_heuristic_oracle(log: pd.DataFrame) -> Dict[str, set]:
-    column_names = EventLogIDs(
-        case=CASE_KEY,
-        activity=ACTIVITY_KEY,
-        start_time=START_TIMESTAMP_KEY,
-        end_time=END_TIMESTAMP_KEY,
-        resource=RESOURCE_KEY,
-        lifecycle=TRANSITION_KEY
-    )
+def parallel_activities_with_heuristic_oracle(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> Dict[
+    str, set]:
+    if not log_ids:
+        log_ids = default_log_ids
+
     config = Configuration(
-        log_ids=column_names,
+        log_ids=log_ids,
         re_estimation_method=ReEstimationMethod.MODE,
         concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
         resource_availability_type=ResourceAvailabilityType.SIMPLE,
@@ -105,26 +103,35 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
 
 
-def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identify_fn_per_case, join_fn,
-                  parallel_run=True) -> Optional[pd.DataFrame]:
+def identify_main(
+        log: pd.DataFrame,
+        parallel_activities: Dict[str, set],
+        identify_fn_per_case,
+        join_fn,
+        parallel_run=True,
+        log_ids: Optional[EventLogIDs] = None) -> Optional[pd.DataFrame]:
     from process_waste.calendar import calendar
 
-    log_grouped = log.groupby(by=CASE_KEY)
+    if not log_ids:
+        log_ids = default_log_ids
+
+    log_grouped = log.groupby(by=log_ids.case)
     all_items = []
-    log_calendar = calendar.make(log, granularity=15)
+    log_calendar = calendar.make(log, granularity=15, log_ids=log_ids)
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
             for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
-                case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
+                case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
                 handle = executor.submit(identify_fn_per_case,
                                          case,
                                          enabled_on=True,
                                          parallel_activities=parallel_activities,
                                          case_id=case_id,
                                          log_calendar=log_calendar,
-                                         log=log)
+                                         log=log,
+                                         log_ids=log_ids)
                 handles.append(handle)
 
         for h in tqdm(handles, desc='Waiting for tasks to finish'):
@@ -134,13 +141,14 @@ def identify_main(log: pd.DataFrame, parallel_activities: Dict[str, set], identi
                 all_items.append(result)
     else:
         for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
-            case = case.sort_values(by=[END_TIMESTAMP_KEY, START_TIMESTAMP_KEY])
+            case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
             result = identify_fn_per_case(case,
                                           enabled_on=True,
                                           parallel_activities=parallel_activities,
                                           case_id=case_id,
                                           log_calendar=log_calendar,
-                                          log=log)
+                                          log=log,
+                                          log_ids=log_ids)
             if result is not None:
                 all_items.append(result)
 
@@ -207,10 +215,13 @@ def add_enabled_timestamp(log: pd.DataFrame):
     oracle.add_enabled_times(log)
 
 
-def read_csv(log_path: Path, utc: bool = True) -> pd.DataFrame:
+def read_csv(log_path: Path, log_ids: Optional[EventLogIDs] = None, utc: bool = True) -> pd.DataFrame:
     log = pd.read_csv(log_path)
 
-    time_columns = [START_TIMESTAMP_KEY, END_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY]
+    if not log_ids:
+        log_ids = default_log_ids
+
+    time_columns = [log_ids.start_time, log_ids.end_time, log_ids.enabled_time]
     for column in time_columns:
         if column in log.columns:
             log[column] = pd.to_datetime(log[column], utc=utc)

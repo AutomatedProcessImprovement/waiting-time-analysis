@@ -1,29 +1,18 @@
 import os
+from typing import Optional
 
 import click
 import pandas as pd
 
 from batch_processing_analysis.analysis import BatchProcessingAnalysis
 from batch_processing_analysis.config import EventLogIDs, Configuration
-from process_waste import CASE_KEY, ACTIVITY_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, print_section_boundaries
-from process_waste.core import core
+from process_waste import print_section_boundaries, default_log_ids
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
 
 
-def default_log_ids() -> EventLogIDs:
-    log_ids = EventLogIDs()
-    log_ids.start_time = core.START_TIMESTAMP_KEY
-    log_ids.end_time = core.END_TIMESTAMP_KEY
-    log_ids.enabled_time = core.ENABLED_TIMESTAMP_KEY
-    log_ids.resource = core.RESOURCE_KEY
-    log_ids.case = core.CASE_KEY
-    log_ids.activity = core.ACTIVITY_KEY
-    return log_ids
-
-
 def run_analysis(event_log: pd.DataFrame,
-                 log_ids: EventLogIDs = default_log_ids(),
+                 log_ids: EventLogIDs = default_log_ids,
                  rscript_path: str = '/usr/local/bin/Rscript') -> pd.DataFrame:
     global RSCRIPT_BIN_PATH
 
@@ -40,10 +29,21 @@ def run_analysis(event_log: pd.DataFrame,
 
 
 @print_section_boundaries('Batch analysis')
-def add_columns_from_batch_analysis(log, column_names: tuple = ('batch_creation_wt',)) -> pd.DataFrame:
-    batch_log = run_analysis(log)
-    result = pd.merge(log,
-                      batch_log[
-                          [CASE_KEY, ACTIVITY_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, *column_names]],
-                      how='left', on=[CASE_KEY, ACTIVITY_KEY, START_TIMESTAMP_KEY])
+def add_columns_from_batch_analysis(
+        log,
+        column_names: tuple = ('batch_creation_wt',),
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    batch_log = run_analysis(log, log_ids=log_ids)
+    log[log_ids.start_time] = log[log_ids.start_time].apply(__nullify_microseconds)
+    log[log_ids.end_time] = log[log_ids.end_time].apply(__nullify_microseconds)
+    result = pd.merge(
+        log,
+        batch_log[
+            [log_ids.case, log_ids.activity, log_ids.start_time, log_ids.enabled_time, *column_names]
+        ],
+        how='left', on=[log_ids.case, log_ids.activity, log_ids.start_time])
     return result
+
+
+def __nullify_microseconds(ts) -> pd.Timestamp:
+    return pd.Timestamp(ts).replace(microsecond=0)

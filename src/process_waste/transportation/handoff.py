@@ -3,20 +3,26 @@ from typing import Dict, Optional
 import click
 import pandas as pd
 
+from batch_processing_analysis.config import EventLogIDs
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
+    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, default_log_ids
 from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
 from process_waste.waiting_time.resource_unavailability import detect_waiting_time_due_to_unavailability
 
 
-def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> pd.DataFrame:
+def identify(
+        log: pd.DataFrame,
+        parallel_activities: Dict[str, set],
+        parallel_run=True,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
     click.echo(f'Handoff identification. Parallel run: {parallel_run}')
     result = core.identify_main(
         log=log,
         parallel_activities=parallel_activities,
         identify_fn_per_case=_identify_handoffs_per_case_and_make_report,
         join_fn=core.join_per_case_items,
-        parallel_run=parallel_run)
+        parallel_run=parallel_run,
+        log_ids=log_ids)
     return result
 
 
@@ -28,16 +34,20 @@ def _identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) ->
     log_calendar = kwargs['log_calendar']
     enabled_on = kwargs['enabled_on']
     log = kwargs['log']
+    log_ids = kwargs.get('log_ids')
 
-    case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
+    if not log_ids:
+        log_ids = default_log_ids
+
+    case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
     case.reset_index()
 
-    _mark_strict_handoffs(case, parallel_activities)
-    _mark_self_handoffs(case, parallel_activities)
+    _mark_strict_handoffs(case, parallel_activities, log_ids=log_ids)
+    _mark_self_handoffs(case, parallel_activities, log_ids=log_ids)
     potential_handoffs = case[~case['handoff_type'].isna()]
 
     handoffs_index = potential_handoffs.index
-    handoffs = _make_report(case, enabled_on, handoffs_index, log_calendar, log)
+    handoffs = _make_report(case, enabled_on, handoffs_index, log_calendar, log, log_ids=log_ids)
 
     handoffs_with_frequency = _calculate_frequency_and_duration(handoffs)
 
@@ -81,11 +91,16 @@ def _calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
     return handoff_with_frequency
 
 
-def _make_report(case: pd.DataFrame,
-                 enabled_on: bool,
-                 handoffs_index: pd.Index,
-                 log_calendar: dict,
-                 log: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def _make_report(
+        case: pd.DataFrame,
+        enabled_on: bool,
+        handoffs_index: pd.Index,
+        log_calendar: dict,
+        log: Optional[pd.DataFrame] = None,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    if not log_ids:
+        log_ids = default_log_ids
+
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
                WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
@@ -101,11 +116,11 @@ def _make_report(case: pd.DataFrame,
         destination = case.loc[loc + 1]
 
         # total waiting time calculation
-        destination_start = destination[core.START_TIMESTAMP_KEY]
+        destination_start = destination[log_ids.start_time]
         if enabled_on:
-            source_end = destination[core.ENABLED_TIMESTAMP_KEY]
+            source_end = destination[log_ids.enabled_time]
         else:
-            source_end = source[core.END_TIMESTAMP_KEY]
+            source_end = source[log_ids.end_time]
         waiting_time = destination_start - source_end
         if waiting_time < pd.Timedelta(0):
             waiting_time = pd.Timedelta(0)
@@ -122,7 +137,7 @@ def _make_report(case: pd.DataFrame,
         # because the WT of the source activity isn't related to this handoff
         source_index = pd.Index([loc + 1])
 
-        detect_prioritization_or_contention(source_index, log)
+        detect_prioritization_or_contention(source_index, log, log_ids=log_ids)
 
         waiting_time_prioritization = log.loc[source_index, WAITING_TIME_PRIORITIZATION_KEY].values.sum()
         if pd.isna(waiting_time_prioritization):
@@ -132,7 +147,7 @@ def _make_report(case: pd.DataFrame,
         if pd.isna(waiting_time_contention):
             waiting_time_contention = pd.Timedelta(0)
 
-        detect_waiting_time_due_to_unavailability(source_index, log, log_calendar)
+        detect_waiting_time_due_to_unavailability(source_index, log, log_calendar, log_ids=log_ids)
 
         waiting_time_unavailability = log.loc[source_index, WAITING_TIME_UNAVAILABILITY_KEY].values.sum()
         if pd.isna(waiting_time_unavailability):
@@ -143,17 +158,17 @@ def _make_report(case: pd.DataFrame,
             waiting_time_extraneous = pd.Timedelta(0)
 
         # handoff type
-        if source[core.RESOURCE_KEY] == destination[core.RESOURCE_KEY]:
+        if source[log_ids.resource] == destination[log_ids.resource]:
             handoff_type = 'self'
         else:
             handoff_type = 'strict'
 
         # appending the handoff data
         handoff = pd.DataFrame({
-            'source_activity': [source[core.ACTIVITY_KEY]],
-            'source_resource': [source[core.RESOURCE_KEY]],
-            'destination_activity': [destination[core.ACTIVITY_KEY]],
-            'destination_resource': [destination[core.RESOURCE_KEY]],
+            'source_activity': [source[log_ids.activity]],
+            'source_resource': [source[log_ids.resource]],
+            'destination_activity': [destination[log_ids.activity]],
+            'destination_resource': [destination[log_ids.resource]],
             'handoff_type': [handoff_type],
             WAITING_TIME_TOTAL_KEY: [waiting_time],
             WAITING_TIME_BATCHING_KEY: [waiting_time_batch],
@@ -170,17 +185,23 @@ def _make_report(case: pd.DataFrame,
     return handoffs
 
 
-def _mark_strict_handoffs(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
+def _mark_strict_handoffs(
+        case: pd.DataFrame,
+        parallel_activities: Optional[Dict[str, set]] = None,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    if not log_ids:
+        log_ids = default_log_ids
+
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
     # checking the main conditions for handoff to occur
     next_events = case.shift(-1)
-    resource_changed = case[core.RESOURCE_KEY] != next_events[core.RESOURCE_KEY]
-    activity_changed = case[core.ACTIVITY_KEY] != next_events[core.ACTIVITY_KEY]
-    consecutive_timestamps = case[core.END_TIMESTAMP_KEY] <= next_events[core.START_TIMESTAMP_KEY]
+    resource_changed = case[log_ids.resource] != next_events[log_ids.resource]
+    activity_changed = case[log_ids.activity] != next_events[log_ids.activity]
+    consecutive_timestamps = case[log_ids.end_time] <= next_events[log_ids.start_time]
     not_parallel = pd.Series(index=case.index, dtype=bool)
-    prev_activities = case[core.ACTIVITY_KEY]
-    next_activities = next_events[core.ACTIVITY_KEY]
+    prev_activities = case[log_ids.activity]
+    next_activities = next_events[log_ids.activity]
     for (i, pair) in enumerate(zip(prev_activities, next_activities)):
         if pair[0] == pair[1]:
             not_parallel.iat[i] = False
@@ -196,17 +217,23 @@ def _mark_strict_handoffs(case: pd.DataFrame, parallel_activities: Optional[Dict
     return case
 
 
-def _mark_self_handoffs(case: pd.DataFrame, parallel_activities: Optional[Dict[str, set]] = None) -> pd.DataFrame:
+def _mark_self_handoffs(
+        case: pd.DataFrame,
+        parallel_activities: Optional[Dict[str, set]] = None,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    if not log_ids:
+        log_ids = default_log_ids
+
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
     # checking the main conditions for handoff to occur
     next_events = case.shift(-1)
-    same_resource = case[core.RESOURCE_KEY] == next_events[core.RESOURCE_KEY]
-    activity_changed = case[core.ACTIVITY_KEY] != next_events[core.ACTIVITY_KEY]
-    consecutive_timestamps = case[core.END_TIMESTAMP_KEY] <= next_events[core.START_TIMESTAMP_KEY]
+    same_resource = case[log_ids.resource] == next_events[log_ids.resource]
+    activity_changed = case[log_ids.activity] != next_events[log_ids.activity]
+    consecutive_timestamps = case[log_ids.end_time] <= next_events[log_ids.start_time]
     not_parallel = pd.Series(index=case.index, dtype=bool)
-    prev_activities = case[core.ACTIVITY_KEY]
-    next_activities = next_events[core.ACTIVITY_KEY]
+    prev_activities = case[log_ids.activity]
+    next_activities = next_events[log_ids.activity]
     for (i, pair) in enumerate(zip(prev_activities, next_activities)):
         if pair[0] == pair[1]:
             not_parallel.iat[i] = False

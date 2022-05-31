@@ -7,7 +7,7 @@ repos:
     hooks:
       - id: pytest-check
         name: pytest-check
-        entry: pytest --exitfirst -v -m "not integration"
+        entry: pytest --exitfirst -v -m "not integration and not icpm"
         language: system
         pass_filenames: false
         always_run: true

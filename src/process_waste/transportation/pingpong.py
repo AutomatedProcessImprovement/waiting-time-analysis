@@ -3,17 +3,24 @@ from typing import Optional, Dict
 import click
 import pandas as pd
 
+from batch_processing_analysis.config import EventLogIDs
+from process_waste import default_log_ids
 from process_waste.core import core
 
 
-def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_run=True) -> Optional[pd.DataFrame]:
+def identify(
+        log: pd.DataFrame,
+        parallel_activities: Dict[str, set],
+        parallel_run=True,
+        log_ids: Optional[EventLogIDs] = None) -> Optional[pd.DataFrame]:
     click.echo(f'Ping-pong identification. Parallel run: {parallel_run}')
     result = core.identify_main(
         log=log,
         parallel_activities=parallel_activities,
         identify_fn_per_case=_identify_ping_pongs_per_case,
         join_fn=core.join_per_case_items,
-        parallel_run=parallel_run)
+        parallel_run=parallel_run,
+        log_ids=log_ids)
     return result
 
 
@@ -28,8 +35,12 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
     parallel_activities = kwargs['parallel_activities']
     case_id = kwargs['case_id']
     enabled_on = kwargs['enabled_on']
+    log_ids = kwargs['log_ids']
 
-    case = case.sort_values(by=[core.END_TIMESTAMP_KEY, core.START_TIMESTAMP_KEY]).copy()
+    if not log_ids:
+        log_ids = default_log_ids
+
+    case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
     case.reset_index()
 
     # NOTE: we need 4 consecutive events to identify the ping-pong pattern: A→B→C→D
@@ -63,40 +74,40 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
         # now all 4 events are populated
 
         # skipping parallel events
-        parallel: bool = _is_parallel(pre_pre_previous_event[core.ACTIVITY_KEY], pre_previous_event[core.ACTIVITY_KEY],
+        parallel: bool = _is_parallel(pre_pre_previous_event[log_ids.activity], pre_previous_event[log_ids.activity],
                                       parallel_activities) or \
-                         _is_parallel(pre_previous_event[core.ACTIVITY_KEY], previous_event[core.ACTIVITY_KEY],
+                         _is_parallel(pre_previous_event[log_ids.activity], previous_event[log_ids.activity],
                                       parallel_activities) or \
-                         _is_parallel(previous_event[core.ACTIVITY_KEY], event[core.ACTIVITY_KEY], parallel_activities)
+                         _is_parallel(previous_event[log_ids.activity], event[log_ids.activity], parallel_activities)
 
         consecutive_timestamps: bool = \
-            pre_pre_previous_event[core.END_TIMESTAMP_KEY] <= pre_previous_event[core.START_TIMESTAMP_KEY] and \
-            pre_previous_event[core.END_TIMESTAMP_KEY] <= previous_event[core.START_TIMESTAMP_KEY] and \
-            previous_event[core.END_TIMESTAMP_KEY] <= event[core.START_TIMESTAMP_KEY]
+            pre_pre_previous_event[log_ids.end_time] <= pre_previous_event[log_ids.start_time] and \
+            pre_previous_event[log_ids.end_time] <= previous_event[log_ids.start_time] and \
+            previous_event[log_ids.end_time] <= event[log_ids.start_time]
 
-        activities_match: bool = pre_pre_previous_event[core.ACTIVITY_KEY] == previous_event[core.ACTIVITY_KEY] and \
-                                 pre_previous_event[core.ACTIVITY_KEY] == event[core.ACTIVITY_KEY]
+        activities_match: bool = pre_pre_previous_event[log_ids.activity] == previous_event[log_ids.activity] and \
+                                 pre_previous_event[log_ids.activity] == event[log_ids.activity]
 
-        resources_match: bool = pre_pre_previous_event[core.RESOURCE_KEY] == previous_event[core.RESOURCE_KEY] and \
-                                pre_previous_event[core.RESOURCE_KEY] == event[core.RESOURCE_KEY]
+        resources_match: bool = pre_pre_previous_event[log_ids.resource] == previous_event[log_ids.resource] and \
+                                pre_previous_event[log_ids.resource] == event[log_ids.resource]
 
         if consecutive_timestamps and activities_match and resources_match and not parallel:
-            ping_pong_key = f"{previous_event[core.ACTIVITY_KEY]}:{previous_event[core.RESOURCE_KEY]}:{event[core.ACTIVITY_KEY]}:{event[core.RESOURCE_KEY]}"
+            ping_pong_key = f"{previous_event[log_ids.activity]}:{previous_event[log_ids.resource]}:{event[log_ids.activity]}:{event[log_ids.resource]}"
             if enabled_on:
                 step2_handoff_duration = \
-                    previous_event[core.START_TIMESTAMP_KEY] - previous_event[core.ENABLED_TIMESTAMP_KEY]
+                    previous_event[log_ids.start_time] - previous_event[log_ids.enabled_time]
                 step3_handoff_duration = \
-                    event[core.START_TIMESTAMP_KEY] - event[core.ENABLED_TIMESTAMP_KEY]
+                    event[log_ids.start_time] - event[log_ids.enabled_time]
             else:
                 step2_handoff_duration = \
-                    previous_event[core.START_TIMESTAMP_KEY] - pre_previous_event[core.END_TIMESTAMP_KEY]
+                    previous_event[log_ids.start_time] - pre_previous_event[log_ids.end_time]
                 step3_handoff_duration = \
-                    event[core.START_TIMESTAMP_KEY] - previous_event[core.END_TIMESTAMP_KEY]
+                    event[log_ids.start_time] - previous_event[log_ids.end_time]
             ping_pong = {
-                'source_activity': previous_event[core.ACTIVITY_KEY],
-                'source_resource': previous_event[core.RESOURCE_KEY],
-                'destination_activity': event[core.ACTIVITY_KEY],
-                'destination_resource': event[core.RESOURCE_KEY],
+                'source_activity': previous_event[log_ids.activity],
+                'source_resource': previous_event[log_ids.resource],
+                'destination_activity': event[log_ids.activity],
+                'destination_resource': event[log_ids.resource],
                 'frequency': 1,
                 'wt_total': step2_handoff_duration + step3_handoff_duration
             }

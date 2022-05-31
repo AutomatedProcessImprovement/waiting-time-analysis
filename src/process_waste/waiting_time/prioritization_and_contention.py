@@ -1,8 +1,10 @@
+from typing import Optional
+
 import pandas as pd
 from tqdm import tqdm
 
-from process_waste import START_TIMESTAMP_KEY, WAITING_TIME_CONTENTION_KEY, \
-    END_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_PRIORITIZATION_KEY
+from batch_processing_analysis.config import EventLogIDs
+from process_waste import WAITING_TIME_CONTENTION_KEY, WAITING_TIME_PRIORITIZATION_KEY, default_log_ids
 from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
 
 
@@ -15,28 +17,34 @@ def run_analysis(log: pd.DataFrame) -> pd.DataFrame:
     return log
 
 
-def detect_prioritization_or_contention(event_index: pd.Index, log: pd.DataFrame):
+def detect_prioritization_or_contention(
+        event_index: pd.Index,
+        log: pd.DataFrame,
+        log_ids: Optional[EventLogIDs] = None):
+    if not log_ids:
+        log_ids = default_log_ids
+
     event = log.loc[event_index]
     if isinstance(event, pd.Series):
         event = event.to_frame().T
 
-    event_enabled_time = event[ENABLED_TIMESTAMP_KEY].values[0]
+    event_enabled_time = event[log_ids.enabled_time].values[0]
     event_enabled_time = pd.to_datetime(event_enabled_time, utc=True)
 
-    other_processing_events = other_processing_events_during_waiting_time_of_event(event_index, log)
+    other_processing_events = other_processing_events_during_waiting_time_of_event(event_index, log, log_ids=log_ids)
 
     # determining activities due to prioritization or contention
     events_due_to_prioritization = other_processing_events[
-        other_processing_events[ENABLED_TIMESTAMP_KEY] > event_enabled_time]
+        other_processing_events[log_ids.enabled_time] > event_enabled_time]
     events_due_to_contention = other_processing_events[
-        other_processing_events[ENABLED_TIMESTAMP_KEY] <= event_enabled_time]
+        other_processing_events[log_ids.enabled_time] <= event_enabled_time]
 
     # calculating the waiting times
     wt_prioritization = (
-            events_due_to_prioritization[END_TIMESTAMP_KEY] - events_due_to_prioritization[START_TIMESTAMP_KEY]
+            events_due_to_prioritization[log_ids.end_time] - events_due_to_prioritization[log_ids.start_time]
     ).sum()
     wt_contention = (
-            events_due_to_contention[END_TIMESTAMP_KEY] - events_due_to_contention[START_TIMESTAMP_KEY]
+            events_due_to_contention[log_ids.end_time] - events_due_to_contention[log_ids.start_time]
     ).sum()
 
     # updating the dataframe

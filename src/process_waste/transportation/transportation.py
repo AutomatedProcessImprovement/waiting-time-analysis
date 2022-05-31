@@ -1,29 +1,44 @@
 from pathlib import Path
+from typing import Optional, List, Callable
 
+import click
 import pandas as pd
 
+from batch_processing_analysis.config import EventLogIDs
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
+from .. import WAITING_TIME_TOTAL_KEY
 from ..core import core
 from ..waiting_time import batching
 
 
-def identify(log_path: Path, parallel_run=True) -> dict:
-    log = core.read_csv(log_path)
+def identify(log_path: Path,
+             parallel_run=True,
+             log_ids: Optional[EventLogIDs] = None,
+             preprocessing_funcs: Optional[List[Callable]] = None) -> dict:
+    log = core.read_csv(log_path, log_ids=log_ids)
+
+    # preprocess event log
+    if preprocessing_funcs is not None:
+        for preprocess_func in preprocessing_funcs:
+            click.echo(f'Preprocessing [{preprocess_func.__name__}]')
+            log = preprocess_func(log)
 
     # NOTE: Batching analysis package adds enabled_timestamp column to the log
     # core.add_enabled_timestamp(log)
 
     # taking batch creation time from the batch analysis
-    log = batching.add_columns_from_batch_analysis(log, column_names=('batch_creation_wt',))
+    log = batching.add_columns_from_batch_analysis(log, column_names=('batch_creation_wt',), log_ids=log_ids)
+
+    assert not log[log_ids.enabled_time].isna().any(), 'Column enabled_time is missing after batching analysis'
+    assert not log['batch_creation_wt'].isna().any(), 'Column batch_creation_wt is missing after batching analysis'
 
     # total waiting time
-    log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
+    log[WAITING_TIME_TOTAL_KEY] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
-    parallel_activities = core.parallel_activities_with_heuristic_oracle(log)
-    handoff_report = handoff.identify(log, parallel_activities, parallel_run)
-    pingpong_report = pingpong.identify(log, parallel_activities, parallel_run)
+    parallel_activities = core.parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
+    handoff_report = handoff.identify(log, parallel_activities, parallel_run, log_ids=log_ids)
+    pingpong_report = pingpong.identify(log, parallel_activities, parallel_run, log_ids=log_ids)
 
     # identifying common records for both reports
     index_columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
