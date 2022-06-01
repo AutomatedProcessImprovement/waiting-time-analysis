@@ -135,7 +135,7 @@ jobs:
         shell: bash
         working-directory: /usr/src/app
         env:
-          RSCRIPT_BIN_PATH: ${{ RSCRIPT_BIN_PATH }}
+          RSCRIPT_BIN_PATH: ${{ env.RSCRIPT_BIN_PATH }}
         run: |
           source venv/bin/activate
           pytest -n auto -v --durations=0 --cov=. --junitxml=pytest_coverage.xml --cov-report=term tests | tee pytest-coverage.log
