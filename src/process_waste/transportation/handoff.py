@@ -8,7 +8,7 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, default_log_ids, \
-    convert_timestamp_columns_to_datetime
+    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_CREATION_KEY
 from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
 from process_waste.waiting_time.resource_unavailability import detect_waiting_time_due_to_unavailability
 
@@ -34,10 +34,7 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     case_id = kwargs['case_id']
     log_calendar = kwargs['log_calendar']
     log = kwargs['log']
-    log_ids = kwargs.get('log_ids')
-
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(kwargs.get('log_ids'))
 
     case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
     case.reset_index()
@@ -101,8 +98,8 @@ def __make_report(
         log_calendar: dict,
         log: Optional[pd.DataFrame] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    if not log_ids:
-        log_ids = default_log_ids
+
+    log_ids = log_ids_non_nil(log_ids)
 
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
@@ -202,11 +199,10 @@ def __wt_batching(destination: pd.DataFrame) -> pd.Timedelta:
 
     # waiting time due to batching: we take the WT of the destination activity only,
     # because the WT of the source activity isn't related to this handoff
-    batch_column_key = 'batch_creation_wt'
 
     waiting_time_batch = pd.Timedelta(0)
-    if batch_column_key in destination.index:
-        waiting_time_batch = destination[batch_column_key]
+    if BATCH_CREATION_KEY in destination.index:
+        waiting_time_batch = destination[BATCH_CREATION_KEY]
     if pd.isna(waiting_time_batch):
         waiting_time_batch = pd.Timedelta(0)
     return waiting_time_batch
@@ -216,8 +212,8 @@ def __mark_strict_handoffs(
         case: pd.DataFrame,
         parallel_activities: Optional[Dict[str, set]] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    if not log_ids:
-        log_ids = default_log_ids
+
+    log_ids = log_ids_non_nil(log_ids)
 
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 
@@ -248,8 +244,8 @@ def __mark_self_handoffs(
         case: pd.DataFrame,
         parallel_activities: Optional[Dict[str, set]] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    if not log_ids:
-        log_ids = default_log_ids
+
+    log_ids = log_ids_non_nil(log_ids)
 
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
 

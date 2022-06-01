@@ -7,7 +7,7 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY
+from .. import WAITING_TIME_TOTAL_KEY, BATCH_CREATION_KEY
 from ..core import core
 from ..waiting_time import batching
 
@@ -16,6 +16,7 @@ def identify(log_path: Path,
              parallel_run=True,
              log_ids: Optional[EventLogIDs] = None,
              preprocessing_funcs: Optional[List[Callable]] = None) -> dict:
+
     log = core.read_csv(log_path, log_ids=log_ids)
 
     # preprocess event log
@@ -28,7 +29,7 @@ def identify(log_path: Path,
     # core.add_enabled_timestamp(log)
 
     # taking batch creation time from the batch analysis
-    log = batching.add_columns_from_batch_analysis(log, column_names=('batch_creation_wt',), log_ids=log_ids)
+    log = batching.add_columns_from_batch_analysis(log, column_names=(BATCH_CREATION_KEY,), log_ids=log_ids)
 
     assert not log[log_ids.enabled_time].isna().any(), 'Column enabled_time is missing after batching analysis'
     assert not log['batch_creation_wt'].isna().any(), 'Column batch_creation_wt is missing after batching analysis'

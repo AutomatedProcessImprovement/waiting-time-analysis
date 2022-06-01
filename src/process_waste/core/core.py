@@ -9,7 +9,8 @@ import pandas as pd
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, \
     ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs
+    HeuristicsThresholds
+from batch_processing_analysis.config import EventLogIDs
 from tqdm import tqdm
 
 END_TIMESTAMP_KEY = 'time:timestamp'
@@ -18,14 +19,13 @@ CASE_KEY = 'case:concept:name'
 RESOURCE_KEY = 'org:resource'
 START_TIMESTAMP_KEY = 'start_timestamp'
 ENABLED_TIMESTAMP_KEY = 'enabled_timestamp'
-AVAILABLE_TIMESTAMP_KEY = 'available_timestamp'
-TRANSITION_KEY = 'lifecycle:transition'
 WAITING_TIME_TOTAL_KEY = 'wt_total'
 WAITING_TIME_BATCHING_KEY = 'wt_batching'
 WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
+BATCH_CREATION_KEY = 'batch_creation_wt'
 
 GRANULARITY_MINUTES = 15
 
@@ -35,9 +35,7 @@ default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time col
     start_time=START_TIMESTAMP_KEY,
     end_time=END_TIMESTAMP_KEY,
     enabled_time=ENABLED_TIMESTAMP_KEY,
-    available_time=AVAILABLE_TIMESTAMP_KEY,
     resource=RESOURCE_KEY,
-    lifecycle=TRANSITION_KEY,
 )
 
 default_configuration = Configuration(
@@ -265,3 +263,12 @@ def convert_timestamp_columns_to_datetime(
             event_log[column] = pd.to_datetime(event_log[column], utc=utc)
 
     return event_log
+
+
+def log_ids_non_nil(log_ids: Optional[EventLogIDs]) -> EventLogIDs:
+    """Returns non-nil event log columns."""
+
+    if not log_ids:
+        return default_log_ids
+
+    return log_ids
