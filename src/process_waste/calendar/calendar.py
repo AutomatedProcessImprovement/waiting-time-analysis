@@ -4,14 +4,14 @@ import pandas as pd
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import default_log_ids
+from process_waste import default_log_ids, GRANULARITY_MINUTES
 from process_waste.calendar.intervals import Interval, prosimos_interval_to_interval
 
 UNDIFFERENTIATED_RESOURCE_POOL_KEY = "undifferentiated_resource_pool"
 
 
 def make(event_log: pd.DataFrame,
-         granularity=60,
+         granularity=GRANULARITY_MINUTES,
          min_confidence=0.1,
          desired_support=0.7,
          min_participation=0.4,

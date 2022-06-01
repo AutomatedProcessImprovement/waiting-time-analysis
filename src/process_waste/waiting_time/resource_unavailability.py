@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import WAITING_TIME_UNAVAILABILITY_KEY, default_log_ids
+from process_waste import WAITING_TIME_UNAVAILABILITY_KEY, default_log_ids, GRANULARITY_MINUTES
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
 from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals, \
@@ -13,7 +13,7 @@ from process_waste.calendar.intervals import pd_interval_to_interval, Interval, 
 
 def run_analysis(log: pd.DataFrame) -> pd.DataFrame:
     log[WAITING_TIME_UNAVAILABILITY_KEY] = pd.Timedelta(0)
-    log_calendar = calendar.make(log, granularity=30, differentiated=False)
+    log_calendar = calendar.make(log, granularity=GRANULARITY_MINUTES, differentiated=False)
     for i in tqdm(log.index, desc='Resource unavailability analysis'):
         index = pd.Index([i])
         detect_waiting_time_due_to_unavailability(index, log, log_calendar)

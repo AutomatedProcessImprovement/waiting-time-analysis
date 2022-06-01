@@ -27,6 +27,8 @@ WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 
+GRANULARITY_MINUTES = 15
+
 default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time columns
     case=CASE_KEY,
     activity=ACTIVITY_KEY,
@@ -117,7 +119,7 @@ def identify_main(
 
     log_grouped = log.groupby(by=log_ids.case)
     all_items = []
-    log_calendar = calendar.make(log, granularity=15, log_ids=log_ids)
+    log_calendar = calendar.make(log, granularity=GRANULARITY_MINUTES, log_ids=log_ids)
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
