@@ -128,7 +128,6 @@ def identify_main(
                 case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
                 handle = executor.submit(identify_fn_per_case,
                                          case,
-                                         enabled_on=True,
                                          parallel_activities=parallel_activities,
                                          case_id=case_id,
                                          log_calendar=log_calendar,
@@ -145,7 +144,6 @@ def identify_main(
         for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
             case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
             result = identify_fn_per_case(case,
-                                          enabled_on=True,
                                           parallel_activities=parallel_activities,
                                           case_id=case_id,
                                           log_calendar=log_calendar,

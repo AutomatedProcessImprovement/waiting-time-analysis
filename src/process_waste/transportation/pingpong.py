@@ -34,7 +34,6 @@ def _is_parallel(activity_name_one: str, activity_name_two: str, parallel_activi
 def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
     parallel_activities = kwargs['parallel_activities']
     case_id = kwargs['case_id']
-    enabled_on = kwargs['enabled_on']
     log_ids = kwargs.get('log_ids')
 
     if not log_ids:
@@ -93,16 +92,11 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
         if consecutive_timestamps and activities_match and resources_match and not parallel:
             ping_pong_key = f"{previous_event[log_ids.activity]}:{previous_event[log_ids.resource]}:{event[log_ids.activity]}:{event[log_ids.resource]}"
-            if enabled_on:
-                step2_handoff_duration = \
-                    previous_event[log_ids.start_time] - previous_event[log_ids.enabled_time]
-                step3_handoff_duration = \
-                    event[log_ids.start_time] - event[log_ids.enabled_time]
-            else:
-                step2_handoff_duration = \
-                    previous_event[log_ids.start_time] - pre_previous_event[log_ids.end_time]
-                step3_handoff_duration = \
-                    event[log_ids.start_time] - previous_event[log_ids.end_time]
+            step2_handoff_duration = \
+                previous_event[log_ids.start_time] - previous_event[log_ids.enabled_time]
+            step3_handoff_duration = \
+                event[log_ids.start_time] - event[log_ids.enabled_time]
+
             ping_pong = {
                 'source_activity': previous_event[log_ids.activity],
                 'source_resource': previous_event[log_ids.resource],

@@ -88,8 +88,7 @@ def test_ping_pong_identification(assets_path):
         result = pingpong._identify_ping_pongs_per_case(
             case,
             parallel_activities=parallel_activities,
-            case_id='1',
-            enabled_on=True)
+            case_id='1')
         assert ((result.reset_index() == expected.reset_index()).all()).all()
 
 
