@@ -1,5 +1,6 @@
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -40,12 +41,22 @@ def detect_prioritization_or_contention(
         other_processing_events[log_ids.enabled_time] <= event_enabled_time]
 
     # calculating the waiting times
-    wt_prioritization = (
-            events_due_to_prioritization[log_ids.end_time] - events_due_to_prioritization[log_ids.start_time]
-    ).sum()
-    wt_contention = (
-            events_due_to_contention[log_ids.end_time] - events_due_to_contention[log_ids.start_time]
-    ).sum()
+
+    if events_due_to_prioritization.size > 0:
+        wt_prioritization = (
+                np.minimum(event[log_ids.start_time].values, events_due_to_prioritization[log_ids.end_time].values) -
+                np.maximum(event[log_ids.enabled_time].values, events_due_to_prioritization[log_ids.start_time].values)
+        ).sum()
+    else:
+        wt_prioritization = pd.Timedelta(0)
+
+    if events_due_to_contention.size > 0:
+        wt_contention = (
+                np.minimum(event[log_ids.start_time].values, events_due_to_contention[log_ids.end_time].values) -
+                np.maximum(event[log_ids.enabled_time].values, events_due_to_contention[log_ids.start_time].values)
+        ).sum()
+    else:
+        wt_contention = pd.Timedelta(0)
 
     # updating the dataframe
     log.loc[event_index, WAITING_TIME_PRIORITIZATION_KEY] = wt_prioritization

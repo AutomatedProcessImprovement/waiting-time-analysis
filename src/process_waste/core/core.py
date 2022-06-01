@@ -1,7 +1,7 @@
 import concurrent.futures
 import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 
 import click
 import numpy as np
@@ -221,10 +221,7 @@ def read_csv(log_path: Path, log_ids: Optional[EventLogIDs] = None, utc: bool = 
     if not log_ids:
         log_ids = default_log_ids
 
-    time_columns = [log_ids.start_time, log_ids.end_time, log_ids.enabled_time]
-    for column in time_columns:
-        if column in log.columns:
-            log[column] = pd.to_datetime(log[column], utc=utc)
+    log = convert_timestamp_columns_to_datetime(log, log_ids, utc=utc)
 
     duration_columns = [WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY]
     for column in duration_columns:
@@ -252,3 +249,19 @@ def print_section_boundaries(title: Optional[str] = None):
         return wrapper
 
     return decorator
+
+
+def convert_timestamp_columns_to_datetime(
+        event_log: pd.DataFrame,
+        log_ids: EventLogIDs,
+        time_columns: Tuple[str] = None,
+        utc: bool = True) -> pd.DataFrame:
+    """Converts the timestamp columns of the event log to datetime."""
+
+    if not time_columns:
+        time_columns = [log_ids.start_time, log_ids.end_time, log_ids.enabled_time]
+    for column in time_columns:
+        if column in event_log.columns:
+            event_log[column] = pd.to_datetime(event_log[column], utc=utc)
+
+    return event_log

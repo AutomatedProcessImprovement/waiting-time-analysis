@@ -2,16 +2,22 @@ import pandas as pd
 import pytest
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import identify
+from process_waste import identify, default_log_ids
 
 icpm_data = [
-    # {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},
-    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},
+    # {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},  # no WT at all
+    # {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},  # all WT due to extraneous factors
+    {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True},  # all WT due to resource contention
 ]
 
 
 def __remove_nan_resources(event_log: pd.DataFrame) -> pd.DataFrame:
     event_log = event_log.dropna(subset=['Resource'])
+    return event_log
+
+
+def __filter_specific_case(event_log: pd.DataFrame) -> pd.DataFrame:
+    event_log = event_log[event_log['case_id'] == 20]
     return event_log
 
 

@@ -53,7 +53,7 @@ def other_processing_events_during_waiting_time_of_event(
     # taking activities that resource started before event_start_time but after event_enabled_time
     other_processing_events = resource_events[
         (resource_events[log_ids.start_time] < event_start_time) &
-        (resource_events[log_ids.end_time] >= event_enabled_time)]
+        (resource_events[log_ids.end_time] > event_enabled_time)]
 
     return other_processing_events
 
