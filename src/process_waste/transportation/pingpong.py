@@ -35,7 +35,7 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
     parallel_activities = kwargs['parallel_activities']
     case_id = kwargs['case_id']
     enabled_on = kwargs['enabled_on']
-    log_ids = kwargs['log_ids']
+    log_ids = kwargs.get('log_ids')
 
     if not log_ids:
         log_ids = default_log_ids
