@@ -122,7 +122,7 @@ jobs:
       - name: Set up Rscript bin path
         shell: bash
         run: |
-          export RSCRIPT_BIN_PATH=`which Rscript`
+          echo "RSCRIPT_BIN_PATH=`which Rscript`" >> $GITHUB_ENV
 
       - name: Smoke Test
         shell: bash
@@ -134,6 +134,8 @@ jobs:
       - name: Test the build
         shell: bash
         working-directory: /usr/src/app
+        env:
+          RSCRIPT_BIN_PATH: $RSCRIPT_BIN_PATH
         run: |
           source venv/bin/activate
           pytest -n auto -v --durations=0 --cov=. --junitxml=pytest_coverage.xml --cov-report=term tests | tee pytest-coverage.log
