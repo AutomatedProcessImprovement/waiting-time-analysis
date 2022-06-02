@@ -2,16 +2,25 @@ import pandas as pd
 import pytest
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import identify, default_log_ids
+from process_waste import identify
 
 icpm_data = [
-    {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},  # no WT at all
-    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},  # all WT due to extraneous factors
-    {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True},  # all WT due to resource contention except one prioritization case
-    {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True},  # all WT due to resource unavailability  # TODO: needs to be replaced
-    {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True},  # all WT due to resource unavailability and extraneous factors
-    {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True},  # all WT due to resource contention and extraneous factors and some prioritization
-    {'log_name': 'LoanApp_infRes_24-7_noTimers_batch.CSV', 'parallel_run': True},  # all WT due to batching
+    {'log_name': 'LoanApp_fewRes_9-5_noTimers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_9-5_noTimers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_9-5_timers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_24-7_timers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_9-5_noTimers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_9-5_timers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_24-7_timers_batch.CSV', 'parallel_run': True},
+    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},
 ]
 
 
