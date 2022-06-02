@@ -69,162 +69,6 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     return handoffs_with_frequency
 
 
-def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
-    # calculating frequency per case of the handoffs with the same activities and resources
-    columns = handoffs.columns.tolist()
-    handoff_with_frequency = pd.DataFrame(columns=columns)
-    handoff_grouped = handoffs.groupby(by=[
-        'source_activity', 'source_resource', 'destination_activity', 'destination_resource'
-    ])
-    for group in handoff_grouped:
-        pair, records = group
-        handoff_with_frequency = pd.concat([handoff_with_frequency, pd.DataFrame({
-            'source_activity': [pair[0]],
-            'source_resource': [pair[1]],
-            'destination_activity': [pair[2]],
-            'destination_resource': [pair[3]],
-            'frequency': [len(records)],
-            'handoff_type': [records['handoff_type'].iloc[0]],
-            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
-            WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
-            WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
-            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
-            WAITING_TIME_UNAVAILABILITY_KEY: [records[WAITING_TIME_UNAVAILABILITY_KEY].sum()],
-            WAITING_TIME_EXTRANEOUS_KEY: [records[WAITING_TIME_EXTRANEOUS_KEY].sum()],
-        })], ignore_index=True)
-    return handoff_with_frequency
-
-
-def __make_report(
-        case: pd.DataFrame,
-        handoffs_index: pd.Index,
-        log_calendar: dict,
-        log: Optional[pd.DataFrame] = None,
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    log_ids = log_ids_non_nil(log_ids)
-
-    # preparing a different dataframe for handoff reporting
-    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
-               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
-    handoffs = pd.DataFrame(columns=columns)
-
-    # setting NaT to zero duration
-    if WAITING_TIME_CONTENTION_KEY in case.columns:
-        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
-
-    for loc in handoffs_index:
-        source = case.loc[loc]
-        destination = case.loc[loc + 1]
-        destination_index = pd.Index([loc + 1])
-
-        # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
-
-        wt_total = destination[WAITING_TIME_TOTAL_KEY]
-        wt_batching_interval = __wt_batching_interval(destination, log_ids)
-        wt_contention_intervals, wt_prioritization_intervals = \
-            __wt_contention_and_prioritization(destination_index, log, log_ids)
-        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
-
-        wt_analysis = __compute_wt(wt_batching_interval, wt_contention_intervals, wt_prioritization_intervals,
-                                   wt_unavailability_intervals, wt_total)
-
-        wt_batching = wt_analysis.batching
-        wt_contention = wt_analysis.contention
-        wt_prioritization = wt_analysis.prioritization
-        wt_unavailability = wt_analysis.unavailability
-        wt_extraneous = wt_analysis.extraneous
-
-        # handoff type identification
-        if source[log_ids.resource] == destination[log_ids.resource]:
-            handoff_type = 'self'
-        else:
-            handoff_type = 'strict'
-
-        # appending the handoff data
-        handoff = pd.DataFrame({
-            'source_activity': [source[log_ids.activity]],
-            'source_resource': [source[log_ids.resource]],
-            'destination_activity': [destination[log_ids.activity]],
-            'destination_resource': [destination[log_ids.resource]],
-            'handoff_type': [handoff_type],
-            WAITING_TIME_TOTAL_KEY: [wt_total],
-            WAITING_TIME_BATCHING_KEY: [wt_batching],
-            WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
-            WAITING_TIME_CONTENTION_KEY: [wt_contention],
-            WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
-            WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
-        })
-        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
-
-    # filling in N/A with some values
-    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
-    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
-    return handoffs
-
-
-def __wt_extraneous(waiting_time, waiting_time_batch, waiting_time_contention, waiting_time_prioritization,
-                    waiting_time_unavailability) -> pd.Timedelta:
-    """Calculates the extraneous waiting time."""
-
-    waiting_time_extraneous = reduce(operator.__sub__, [
-        waiting_time,
-        waiting_time_batch,
-        waiting_time_prioritization,
-        waiting_time_contention,
-        waiting_time_unavailability
-    ])
-    if pd.isna(waiting_time_extraneous):
-        waiting_time_extraneous = pd.Timedelta(0)
-    return waiting_time_extraneous
-
-
-def __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids) -> List[Interval]:
-    """Discovers waiting time due to unavailability of resources."""
-
-    wt_unavailability_intervals = detect_unavailability_intervals(destination_index, log, log_calendar, log_ids=log_ids)
-
-    def is_empty(interval: Interval) -> bool:
-        if interval.left_time == interval.right_time:
-            if interval.left_day == interval.right_day:
-                return True
-        return False
-
-    intervals = list(filter(lambda interval: not is_empty(interval), wt_unavailability_intervals))
-    return None if len(intervals) == 0 else intervals
-
-
-def __wt_contention_and_prioritization(
-        destination_index: pd.Index,  # handoff pair has source and destination activities
-        log: pd.DataFrame,
-        log_ids: EventLogIDs) -> Tuple[Tuple[List, List], Tuple[List, List]]:
-    """Discovers waiting time due to resource contention and prioritization waiting times."""
-
-    # NOTE: WT of the destination activity is relevant only
-    wt_contention_intervals, wt_prioritization_intervals = \
-        detect_contention_and_prioritization_intervals(destination_index, log, log_ids=log_ids)
-
-    return wt_contention_intervals, wt_prioritization_intervals
-
-
-def __wt_batching_interval(
-        destination: pd.DataFrame,
-        log_ids: EventLogIDs) -> Optional[Tuple[pd.Timestamp, pd.Timestamp]]:
-    """Discovers waiting time due to batching."""
-
-    if BATCH_INSTANCE_ENABLED_KEY not in destination.index:
-        return None
-
-    batch_enabled_timestamp = destination[BATCH_INSTANCE_ENABLED_KEY]
-    event_enabled_timestamp = destination[log_ids.enabled_time]
-    if pd.isna(event_enabled_timestamp) or pd.isna(batch_enabled_timestamp):
-        return None
-
-    if destination[log_ids.enabled_time] > destination[BATCH_INSTANCE_ENABLED_KEY]:
-        return None
-
-    return destination[log_ids.enabled_time], destination[BATCH_INSTANCE_ENABLED_KEY]
-
-
 def __mark_strict_handoffs(
         case: pd.DataFrame,
         parallel_activities: Optional[Dict[str, set]] = None,
@@ -287,18 +131,161 @@ def __mark_self_handoffs(
     return case
 
 
-ComputedWaitingTimes = namedtuple(
+def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
+    # calculating frequency per case of the handoffs with the same activities and resources
+    columns = handoffs.columns.tolist()
+    handoff_with_frequency = pd.DataFrame(columns=columns)
+    handoff_grouped = handoffs.groupby(by=[
+        'source_activity', 'source_resource', 'destination_activity', 'destination_resource'
+    ])
+    for group in handoff_grouped:
+        pair, records = group
+        handoff_with_frequency = pd.concat([handoff_with_frequency, pd.DataFrame({
+            'source_activity': [pair[0]],
+            'source_resource': [pair[1]],
+            'destination_activity': [pair[2]],
+            'destination_resource': [pair[3]],
+            'frequency': [len(records)],
+            'handoff_type': [records['handoff_type'].iloc[0]],
+            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
+            WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
+            WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
+            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
+            WAITING_TIME_UNAVAILABILITY_KEY: [records[WAITING_TIME_UNAVAILABILITY_KEY].sum()],
+            WAITING_TIME_EXTRANEOUS_KEY: [records[WAITING_TIME_EXTRANEOUS_KEY].sum()],
+        })], ignore_index=True)
+    return handoff_with_frequency
+
+
+def __make_report(
+        case: pd.DataFrame,
+        handoffs_index: pd.Index,
+        log_calendar: dict,
+        log: Optional[pd.DataFrame] = None,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    log_ids = log_ids_non_nil(log_ids)
+
+    # preparing a different dataframe for handoff reporting
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
+               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
+    handoffs = pd.DataFrame(columns=columns)
+
+    # setting NaT to zero duration
+    if WAITING_TIME_CONTENTION_KEY in case.columns:
+        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
+
+    for loc in handoffs_index:
+        source = case.loc[loc]
+        destination = case.loc[loc + 1]
+        destination_index = pd.Index([loc + 1])
+
+        # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
+
+        wt_total = destination[WAITING_TIME_TOTAL_KEY]
+        wt_batching_interval = __wt_batching_interval(destination, log_ids)
+        wt_contention_intervals, wt_prioritization_intervals = \
+            __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
+        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
+
+        wt_analysis = __wt_durations_from_wt_intervals(wt_batching_interval, wt_contention_intervals,
+                                                       wt_prioritization_intervals,
+                                                       wt_unavailability_intervals, wt_total)
+
+        wt_batching = wt_analysis.batching
+        wt_contention = wt_analysis.contention
+        wt_prioritization = wt_analysis.prioritization
+        wt_unavailability = wt_analysis.unavailability
+        wt_extraneous = wt_analysis.extraneous
+
+        # handoff type identification
+        if source[log_ids.resource] == destination[log_ids.resource]:
+            handoff_type = 'self'
+        else:
+            handoff_type = 'strict'
+
+        # appending the handoff data
+        handoff = pd.DataFrame({
+            'source_activity': [source[log_ids.activity]],
+            'source_resource': [source[log_ids.resource]],
+            'destination_activity': [destination[log_ids.activity]],
+            'destination_resource': [destination[log_ids.resource]],
+            'handoff_type': [handoff_type],
+            WAITING_TIME_TOTAL_KEY: [wt_total],
+            WAITING_TIME_BATCHING_KEY: [wt_batching],
+            WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
+            WAITING_TIME_CONTENTION_KEY: [wt_contention],
+            WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
+            WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
+        })
+        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
+
+    # filling in N/A with some values
+    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
+    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
+    return handoffs
+
+
+# Waiting Time Analysis
+
+def __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids) -> List[Interval]:
+    """Discovers waiting time due to unavailability of resources."""
+
+    wt_unavailability_intervals = detect_unavailability_intervals(destination_index, log, log_calendar, log_ids=log_ids)
+
+    def is_empty(interval: Interval) -> bool:
+        if interval.left_time == interval.right_time:
+            if interval.left_day == interval.right_day:
+                return True
+        return False
+
+    intervals = list(filter(lambda interval: not is_empty(interval), wt_unavailability_intervals))
+    return None if len(intervals) == 0 else intervals
+
+
+def __wt_contention_and_prioritization_intervals(
+        destination_index: pd.Index,  # handoff pair has source and destination activities
+        log: pd.DataFrame,
+        log_ids: EventLogIDs) -> Tuple[Tuple[List, List], Tuple[List, List]]:
+    """Discovers waiting time due to resource contention and prioritization waiting times."""
+
+    # NOTE: WT of the destination activity is relevant only
+    wt_contention_intervals, wt_prioritization_intervals = \
+        detect_contention_and_prioritization_intervals(destination_index, log, log_ids=log_ids)
+
+    return wt_contention_intervals, wt_prioritization_intervals
+
+
+def __wt_batching_interval(
+        destination: pd.DataFrame,
+        log_ids: EventLogIDs) -> Optional[Tuple[pd.Timestamp, pd.Timestamp]]:
+    """Discovers waiting time due to batching."""
+
+    if BATCH_INSTANCE_ENABLED_KEY not in destination.index:
+        return None
+
+    batch_enabled_timestamp = destination[BATCH_INSTANCE_ENABLED_KEY]
+    event_enabled_timestamp = destination[log_ids.enabled_time]
+    if pd.isna(event_enabled_timestamp) or pd.isna(batch_enabled_timestamp):
+        return None
+
+    if destination[log_ids.enabled_time] > destination[BATCH_INSTANCE_ENABLED_KEY]:
+        return None
+
+    return destination[log_ids.enabled_time], destination[BATCH_INSTANCE_ENABLED_KEY]
+
+
+WaitingTimeDurations = namedtuple(
     'ComputedWaitingTimes',
     ['batching', 'contention', 'prioritization', 'unavailability', 'extraneous']
 )
 
 
-def __compute_wt(
+def __wt_durations_from_wt_intervals(
         wt_batching_interval: Optional[Tuple[pd.Timestamp, pd.Timestamp]],
         wt_contention_intervals: Optional[Tuple[List, List]],
         wt_prioritization_intervals: Optional[Tuple[List, List]],
         wt_unavailability_intervals: Optional[List[Interval]],
-        wt_total: pd.Timedelta) -> ComputedWaitingTimes:
+        wt_total: pd.Timedelta) -> WaitingTimeDurations:
     """Computes waiting time while taking into account overlapping intervals."""
 
     wt_batching = pd.Timedelta(0)
@@ -315,7 +302,7 @@ def __compute_wt(
         return _intervals
 
     if not wt_batching_interval and not wt_contention_intervals and not wt_prioritization_intervals and not wt_unavailability_intervals:
-        return ComputedWaitingTimes(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
+        return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
 
     # waiting time analysis
 
@@ -383,10 +370,7 @@ def __compute_wt(
 
     wt_extraneous = wt_total - wt_batching - wt_contention - wt_prioritization - wt_unavailability
 
-    if wt_extraneous > pd.Timedelta(0):
-        print('ho')
-
-    return ComputedWaitingTimes(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
+    return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
 
 
 # Pandas Intervals
