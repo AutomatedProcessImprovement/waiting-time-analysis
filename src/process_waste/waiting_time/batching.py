@@ -6,7 +6,7 @@ import pandas as pd
 
 from batch_processing_analysis.analysis import BatchProcessingAnalysis
 from batch_processing_analysis.config import EventLogIDs, Configuration
-from process_waste import print_section_boundaries, default_log_ids, BATCH_CREATION_KEY
+from process_waste import print_section_boundaries, default_log_ids, BATCH_INSTANCE_ENABLED_KEY
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
 
@@ -32,7 +32,7 @@ def run_analysis(event_log: pd.DataFrame,
 @print_section_boundaries('Batch analysis')
 def add_columns_from_batch_analysis(
         log,
-        column_names: tuple = (BATCH_CREATION_KEY,),
+        column_names: tuple = (BATCH_INSTANCE_ENABLED_KEY,),
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
     batch_log = run_analysis(log, log_ids=log_ids)
     log[log_ids.start_time] = log[log_ids.start_time].apply(__nullify_microseconds)

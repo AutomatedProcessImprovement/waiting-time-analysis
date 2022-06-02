@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import WAITING_TIME_UNAVAILABILITY_KEY, default_log_ids, GRANULARITY_MINUTES
+from process_waste import WAITING_TIME_UNAVAILABILITY_KEY, default_log_ids, GRANULARITY_MINUTES, log_ids_non_nil
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
 from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals, \
@@ -138,7 +138,51 @@ def detect_waiting_time_due_to_unavailability(
     log.loc[event_index, WAITING_TIME_UNAVAILABILITY_KEY] = wt_due_to_resource_unavailability
 
 
+def detect_unavailability_intervals(
+        event_index: pd.Index,
+        log: pd.DataFrame,
+        log_calendar: dict,
+        differentiated=True,
+        log_ids: Optional[EventLogIDs] = None) -> List[Interval]:
+    log_ids = log_ids_non_nil(log_ids)
+
+    event = log.loc[event_index]
+    if isinstance(event, pd.Series):
+        event = event.to_frame().T
+
+    if differentiated:
+        resource = event[log_ids.resource].values[0]
+    else:
+        resource = UNDIFFERENTIATED_RESOURCE_POOL_KEY
+
+    start_time = pd.Timestamp(event[log_ids.start_time].values[0])
+    enabled_time = pd.Timestamp(event[log_ids.enabled_time].values[0])
+    # TODO: do tz localization somewhere earlier (preprocessing module) on the whole log
+    start_time = __ensure_timestamp_tz(start_time, enabled_time.tz)
+    enabled_time = __ensure_timestamp_tz(enabled_time, start_time.tz)
+
+    overall_work_intervals = calendar.resource_working_hours_as_intervals(resource, log_calendar)
+
+    wt_intervals = pd_interval_to_interval(pd.Interval(enabled_time, start_time))
+
+    working_hours_during_wt = intersect_intervals(wt_intervals, overall_work_intervals)
+
+    idle_intervals = non_processing_intervals(event_index, log, log_ids=log_ids)
+
+    unavailability_intervals = subtract_intervals(idle_intervals, working_hours_during_wt)
+
+    return unavailability_intervals
+
+
 def detect_waiting_times_due_to_unavailability(log: pd.DataFrame, log_calendar: dict):
     for i in log.index:
         event_index = pd.Index([i])
         detect_waiting_time_due_to_unavailability(event_index, log, log_calendar)
+
+
+def __ensure_timestamp_tz(timestamp: pd.Timestamp, tz: Optional[str] = None):
+    if not timestamp.tz:
+        tz = tz if tz else 'UTC'
+        timestamp = timestamp.tz_localize(tz)
+
+    return timestamp

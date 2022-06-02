@@ -7,7 +7,7 @@ from process_waste import WAITING_TIME_CONTENTION_KEY, WAITING_TIME_PRIORITIZATI
     START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
 from process_waste.core import core
 from process_waste.waiting_time import batching
-from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention, \
+from process_waste.waiting_time.prioritization_and_contention import detect_and_update_prioritization_or_contention, \
     run_analysis as prioritization_and_contention_analysis
 
 
@@ -44,7 +44,7 @@ def test_detect_contention(assets_path: Path, log_name: str, event_index: int, e
     log_path = assets_path / log_name
     event_log = core.read_csv(log_path)
     pd_event_index = pd.Index([event_index])
-    detect_prioritization_or_contention(pd_event_index, event_log)
+    detect_and_update_prioritization_or_contention(pd_event_index, event_log)
     assert event_log.loc[pd_event_index, WAITING_TIME_CONTENTION_KEY].sum() == expected_contention
 
 
@@ -53,7 +53,7 @@ def test_detect_prioritization_or_contention(assets_path):
     event_log = core.read_csv(log_path)
 
     event_index = pd.Index([2])
-    detect_prioritization_or_contention(event_index, event_log)
+    detect_and_update_prioritization_or_contention(event_index, event_log)
 
     assert event_log is not None
     assert WAITING_TIME_PRIORITIZATION_KEY in event_log.columns

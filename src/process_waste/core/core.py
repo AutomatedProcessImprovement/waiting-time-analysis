@@ -25,7 +25,7 @@ WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
-BATCH_CREATION_KEY = 'batch_creation_wt'
+BATCH_INSTANCE_ENABLED_KEY = 'batch_instance_enabled'
 
 GRANULARITY_MINUTES = 15
 

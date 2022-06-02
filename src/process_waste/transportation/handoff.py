@@ -1,16 +1,19 @@
 import operator
+from collections import namedtuple
 from functools import reduce
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 import click
 import pandas as pd
 
 from batch_processing_analysis.config import EventLogIDs
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, default_log_ids, \
-    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_CREATION_KEY
-from process_waste.waiting_time.prioritization_and_contention import detect_prioritization_or_contention
-from process_waste.waiting_time.resource_unavailability import detect_waiting_time_due_to_unavailability
+    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
+    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY
+from process_waste.calendar.intervals import Interval, pd_interval_to_interval, subtract_intervals, \
+    pd_intervals_to_intervals, overall_duration
+from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
+from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
 
 
 def identify(
@@ -98,7 +101,6 @@ def __make_report(
         log_calendar: dict,
         log: Optional[pd.DataFrame] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-
     log_ids = log_ids_non_nil(log_ids)
 
     # preparing a different dataframe for handoff reporting
@@ -115,11 +117,22 @@ def __make_report(
         destination = case.loc[loc + 1]
         destination_index = pd.Index([loc + 1])
 
+        # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
+
         wt_total = destination[WAITING_TIME_TOTAL_KEY]
-        wt_batching = __wt_batching(destination)
-        wt_contention, wt_prioritization = __wt_contention_and_prioritization(destination_index, log, log_ids)
-        wt_unavailability = __wt_unavailability(destination_index, log, log_calendar, log_ids)
-        wt_extraneous = __wt_extraneous(wt_total, wt_batching, wt_contention, wt_prioritization, wt_unavailability)
+        wt_batching_interval = __wt_batching_interval(destination, log_ids)
+        wt_contention_intervals, wt_prioritization_intervals = \
+            __wt_contention_and_prioritization(destination_index, log, log_ids)
+        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
+
+        wt_analysis = __compute_wt(wt_batching_interval, wt_contention_intervals, wt_prioritization_intervals,
+                                   wt_unavailability_intervals, wt_total)
+
+        wt_batching = wt_analysis.batching
+        wt_contention = wt_analysis.contention
+        wt_prioritization = wt_analysis.prioritization
+        wt_unavailability = wt_analysis.unavailability
+        wt_extraneous = wt_analysis.extraneous
 
         # handoff type identification
         if source[log_ids.resource] == destination[log_ids.resource]:
@@ -165,54 +178,57 @@ def __wt_extraneous(waiting_time, waiting_time_batch, waiting_time_contention, w
     return waiting_time_extraneous
 
 
-def __wt_unavailability(destination_index, log, log_calendar, log_ids) -> pd.Timedelta:
+def __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids) -> List[Interval]:
     """Discovers waiting time due to unavailability of resources."""
 
-    detect_waiting_time_due_to_unavailability(destination_index, log, log_calendar, log_ids=log_ids)
-    waiting_time_unavailability = log.loc[destination_index][WAITING_TIME_UNAVAILABILITY_KEY].values.sum()
-    if pd.isna(waiting_time_unavailability):
-        waiting_time_unavailability = pd.Timedelta(0)
-    return waiting_time_unavailability
+    wt_unavailability_intervals = detect_unavailability_intervals(destination_index, log, log_calendar, log_ids=log_ids)
+
+    def is_empty(interval: Interval) -> bool:
+        if interval.left_time == interval.right_time:
+            if interval.left_day == interval.right_day:
+                return True
+        return False
+
+    intervals = list(filter(lambda interval: not is_empty(interval), wt_unavailability_intervals))
+    return None if len(intervals) == 0 else intervals
 
 
 def __wt_contention_and_prioritization(
-        destination_index: pd.Index,
+        destination_index: pd.Index,  # handoff pair has source and destination activities
         log: pd.DataFrame,
-        log_ids: EventLogIDs) -> Tuple[pd.Timedelta, pd.Timedelta]:
-    """Discovers waiting time due to resource contention and prioritization."""
+        log_ids: EventLogIDs) -> Tuple[Tuple[List, List], Tuple[List, List]]:
+    """Discovers waiting time due to resource contention and prioritization waiting times."""
 
-    # Resource contention and prioritization
-    # waiting time due to contention and prioritization: we take the WT of the destination activity only,
-    # because the WT of the source activity isn't related to this handoff
-    detect_prioritization_or_contention(destination_index, log, log_ids=log_ids)
-    waiting_time_prioritization = log.loc[destination_index][WAITING_TIME_PRIORITIZATION_KEY].values.sum()
-    if pd.isna(waiting_time_prioritization):
-        waiting_time_prioritization = pd.Timedelta(0)
-    waiting_time_contention = log.loc[destination_index][WAITING_TIME_CONTENTION_KEY].values.sum()
-    if pd.isna(waiting_time_contention):
-        waiting_time_contention = pd.Timedelta(0)
-    return waiting_time_contention, waiting_time_prioritization
+    # NOTE: WT of the destination activity is relevant only
+    wt_contention_intervals, wt_prioritization_intervals = \
+        detect_contention_and_prioritization_intervals(destination_index, log, log_ids=log_ids)
+
+    return wt_contention_intervals, wt_prioritization_intervals
 
 
-def __wt_batching(destination: pd.DataFrame) -> pd.Timedelta:
+def __wt_batching_interval(
+        destination: pd.DataFrame,
+        log_ids: EventLogIDs) -> Optional[Tuple[pd.Timestamp, pd.Timestamp]]:
     """Discovers waiting time due to batching."""
 
-    # waiting time due to batching: we take the WT of the destination activity only,
-    # because the WT of the source activity isn't related to this handoff
+    if BATCH_INSTANCE_ENABLED_KEY not in destination.index:
+        return None
 
-    waiting_time_batch = pd.Timedelta(0)
-    if BATCH_CREATION_KEY in destination.index:
-        waiting_time_batch = destination[BATCH_CREATION_KEY]
-    if pd.isna(waiting_time_batch):
-        waiting_time_batch = pd.Timedelta(0)
-    return waiting_time_batch
+    batch_enabled_timestamp = destination[BATCH_INSTANCE_ENABLED_KEY]
+    event_enabled_timestamp = destination[log_ids.enabled_time]
+    if pd.isna(event_enabled_timestamp) or pd.isna(batch_enabled_timestamp):
+        return None
+
+    if destination[log_ids.enabled_time] > destination[BATCH_INSTANCE_ENABLED_KEY]:
+        return None
+
+    return destination[log_ids.enabled_time], destination[BATCH_INSTANCE_ENABLED_KEY]
 
 
 def __mark_strict_handoffs(
         case: pd.DataFrame,
         parallel_activities: Optional[Dict[str, set]] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-
     log_ids = log_ids_non_nil(log_ids)
 
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
@@ -244,7 +260,6 @@ def __mark_self_handoffs(
         case: pd.DataFrame,
         parallel_activities: Optional[Dict[str, set]] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-
     log_ids = log_ids_non_nil(log_ids)
 
     # TODO: should ENABLED_TIMESTAMP_KEY be used?
@@ -270,3 +285,187 @@ def __mark_self_handoffs(
     handoff_occurred = same_resource & activity_changed & consecutive_timestamps & not_parallel
     case.loc[case[handoff_occurred].index, 'handoff_type'] = 'self'
     return case
+
+
+ComputedWaitingTimes = namedtuple(
+    'ComputedWaitingTimes',
+    ['batching', 'contention', 'prioritization', 'unavailability', 'extraneous']
+)
+
+
+def __compute_wt(
+        wt_batching_interval: Optional[Tuple[pd.Timestamp, pd.Timestamp]],
+        wt_contention_intervals: Optional[Tuple[List, List]],
+        wt_prioritization_intervals: Optional[Tuple[List, List]],
+        wt_unavailability_intervals: Optional[List[Interval]],
+        wt_total: pd.Timedelta) -> ComputedWaitingTimes:
+    """Computes waiting time while taking into account overlapping intervals."""
+
+    wt_batching = pd.Timedelta(0)
+    wt_contention = pd.Timedelta(0)
+    wt_prioritization = pd.Timedelta(0)
+    wt_unavailability = pd.Timedelta(0)
+    wt_extraneous = pd.Timedelta(0)
+
+    def make_intervals(_intervals: Tuple[List, list]) -> List[pd.Interval]:
+        _intervals = list(zip(_intervals[0], _intervals[1]))
+        _intervals = [
+            pd.Interval(pd.to_datetime(start, utc=True), pd.to_datetime(end, utc=True))
+            for start, end in _intervals]
+        return _intervals
+
+    if not wt_batching_interval and not wt_contention_intervals and not wt_prioritization_intervals and not wt_unavailability_intervals:
+        return ComputedWaitingTimes(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
+
+    # waiting time analysis
+
+    wt_contention_pd_intervals = None
+    wt_prioritization_pd_intervals = None
+
+    # batching calculation
+
+    if wt_batching_interval:
+        wt_batching = wt_batching_interval[1] - wt_batching_interval[0]
+
+    # contention calculation
+
+    if wt_contention_intervals:
+        wt_contention_start = pd.to_datetime(wt_contention_intervals[0], utc=True)
+        wt_contention_end = pd.to_datetime(wt_contention_intervals[1], utc=True)
+        if wt_batching == pd.Timedelta(0):
+            wt_contention = (wt_contention_end - wt_contention_start).sum()
+        else:
+            wt_batching_pd_interval = pd.Interval(wt_batching_interval[0], wt_batching_interval[1])
+            wt_contention_pd_intervals = make_intervals(wt_contention_intervals)
+            wt_contention_pd_intervals = \
+                __subtract_a_from_intervals_b(wt_batching_pd_interval, wt_contention_pd_intervals)
+
+            wt_contention = __duration_of_pd_intervals(wt_contention_pd_intervals)
+
+    # prioritization calculation
+
+    if wt_prioritization_intervals:
+        wt_prioritization_pd_intervals = make_intervals(wt_prioritization_intervals)
+
+        if wt_batching > pd.Timedelta(0):
+            wt_batching_pd_interval = pd.Interval(wt_batching_interval[0], wt_batching_interval[1])
+            wt_prioritization_pd_intervals = \
+                __subtract_a_from_intervals_b(wt_batching_pd_interval, wt_prioritization_pd_intervals)
+
+        if wt_contention_pd_intervals:
+            wt_prioritization_pd_intervals = \
+                __subtract_intervals_a_from_intervals_b(wt_contention_pd_intervals, wt_prioritization_pd_intervals)
+
+        wt_prioritization = __duration_of_pd_intervals(wt_prioritization_pd_intervals)
+
+    # unavailability calculation
+
+    if wt_unavailability_intervals:
+        if wt_batching > pd.Timedelta(0):
+            wt_batching_custom_interval = pd_interval_to_interval(
+                pd.Interval(wt_batching_interval[0], wt_batching_interval[1]))
+
+            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals, wt_batching_custom_interval)
+
+        if wt_contention_pd_intervals:
+            wt_contention_custom_intervals = pd_intervals_to_intervals(wt_contention_pd_intervals)
+            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals,
+                                                             wt_contention_custom_intervals)
+
+        if wt_prioritization_pd_intervals:
+            wt_prioritization_custom_intervals = pd_intervals_to_intervals(wt_prioritization_pd_intervals)
+            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals,
+                                                             wt_prioritization_custom_intervals)
+
+        wt_unavailability = overall_duration(wt_unavailability_intervals)
+
+    # extraneous calculation
+
+    wt_extraneous = wt_total - wt_batching - wt_contention - wt_prioritization - wt_unavailability
+
+    if wt_extraneous > pd.Timedelta(0):
+        print('ho')
+
+    return ComputedWaitingTimes(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
+
+
+# Pandas Intervals
+
+def __subtract_a_from_b(a: pd.Interval, b: pd.Interval) -> [pd.Interval]:
+    """Subtracts the interval a from b."""
+
+    if not a.overlaps(b):
+        return [b]
+
+    if a.left == b.left:
+        if a.right == b.right:
+            return []
+
+        if a.right < b.right:
+            return [pd.Interval(a.right, b.right)]
+
+        if a.right > b.right:
+            return []
+
+    if a.right == b.right:
+        if a.left > b.left:
+            return [pd.Interval(b.left, a.left)]
+
+        if a.left < b.left:
+            return []
+
+    if a.left < b.left:
+        if a.right < b.right:
+            return [pd.Interval(a.right, b.right)]
+        if a.right > b.right:
+            return []
+
+    if a.left > b.left:
+        if a.right > b.right:
+            return [pd.Interval(b.left, a.left)]
+
+        if a.right < b.right:
+            return [pd.Interval(b.left, a.left), pd.Interval(a.right, b.right)]
+
+
+def __subtract_a_from_intervals_b(a: pd.Interval, b: List[pd.Interval]) -> List[pd.Interval]:
+    """Subtracts the interval a from intervals b."""
+
+    if len(b) == 0:
+        return []
+
+    result = []
+    for interval_b in b:
+        result.extend(__subtract_a_from_b(a, interval_b))
+
+    return result
+
+
+def __subtract_intervals_a_from_intervals_b(a: List[pd.Interval], b: List[pd.Interval]) -> List[pd.Interval]:
+    """Subtracts the intervals a from b."""
+
+    if len(a) == 0:
+        return b
+
+    if len(b) == 0:
+        return []
+
+    result = __subtract_a_from_intervals_b(a[0], b)
+
+    if len(a) == 1:
+        return result
+
+    return __subtract_intervals_a_from_intervals_b(a[1:], result)
+
+
+def __duration_of_pd_intervals(intervals: List[pd.Interval]) -> pd.Timedelta:
+    """Returns the duration of the intervals."""
+
+    if len(intervals) == 0:
+        return pd.Timedelta(0)
+
+    result = pd.Timedelta(0)
+    for interval in intervals:
+        result += interval.right - interval.left
+
+    return result
