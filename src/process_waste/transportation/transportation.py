@@ -7,7 +7,7 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY
+from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_ids
 from ..core import core
 from ..waiting_time import batching
 
@@ -16,6 +16,8 @@ def identify(log_path: Path,
              parallel_run=True,
              log_ids: Optional[EventLogIDs] = None,
              preprocessing_funcs: Optional[List[Callable]] = None) -> dict:
+    if not log_ids:
+        log_ids = default_log_ids
 
     log = core.read_csv(log_path, log_ids=log_ids)
 
@@ -43,19 +45,19 @@ def identify(log_path: Path,
     index_columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
     handoff_report = handoff_report.set_index(index_columns)
 
-    if pingpong_report is not None and not pingpong_report.empty:
-        pingpong_report = pingpong_report.set_index(index_columns)
-        common_index = handoff_report.index.intersection(pingpong_report.index)
+    # if pingpong_report is not None and not pingpong_report.empty:
+    #     pingpong_report = pingpong_report.set_index(index_columns)
+        # common_index = handoff_report.index.intersection(pingpong_report.index)
 
         # metrics to update
-        wt_total_key = WAITING_TIME_TOTAL_KEY
-        wt_total_sec_key = 'wt_total_seconds'
-        frequency_key = 'frequency'
+        # wt_total_key = WAITING_TIME_TOTAL_KEY
+        # wt_total_sec_key = 'wt_total_seconds'
+        # frequency_key = 'frequency'
 
-        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=wt_total_key)
-        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index,
-                                  metric_key=wt_total_sec_key)
-        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
+        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=wt_total_key)
+        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index,
+        #                           metric_key=wt_total_sec_key)
+        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
 
     # converting index back to columns
     handoff_report = handoff_report.reset_index()

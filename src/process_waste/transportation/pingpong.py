@@ -4,10 +4,11 @@ import click
 import pandas as pd
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import default_log_ids
+from process_waste import default_log_ids, print_section_boundaries
 from process_waste.core import core
 
 
+@print_section_boundaries('Ping-pong analysis')
 def identify(
         log: pd.DataFrame,
         parallel_activities: Dict[str, set],

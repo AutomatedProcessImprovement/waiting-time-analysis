@@ -14,7 +14,7 @@ def make(event_log: pd.DataFrame,
          granularity=GRANULARITY_MINUTES,
          min_confidence=0.1,
          desired_support=0.7,
-         min_participation=0.4,
+         min_participation=0.0001,
          differentiated=True,
          log_ids: Optional[EventLogIDs] = None) -> dict:
     """

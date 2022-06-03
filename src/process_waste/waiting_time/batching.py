@@ -9,6 +9,7 @@ from batch_processing_analysis.config import EventLogIDs, Configuration
 from process_waste import print_section_boundaries, default_log_ids, BATCH_INSTANCE_ENABLED_KEY
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
+BATCH_MIN_SIZE = 10
 
 
 def run_analysis(event_log: pd.DataFrame,
@@ -20,7 +21,7 @@ def run_analysis(event_log: pd.DataFrame,
     config.log_ids = log_ids
     config.PATH_R_EXECUTABLE = rscript_path if RSCRIPT_BIN_PATH is None else RSCRIPT_BIN_PATH
     config.report_batch_checkpoints = True
-    config.min_batch_instance_size = 5
+    config.min_batch_instance_size = BATCH_MIN_SIZE
     click.echo(f'Running batch processing analysis with Rscript at: {config.PATH_R_EXECUTABLE}')
     try:
         return BatchProcessingAnalysis(event_log, config).analyze_batches()

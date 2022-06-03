@@ -167,23 +167,23 @@ def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
         source_activity, source_resource, destination_activity, destination_resource = pair_index
         group_wt_total: pd.Timedelta = group[WAITING_TIME_TOTAL_KEY].sum()
 
-        group_wt_batching = 0
+        group_wt_batching = pd.Timedelta(0)
         if WAITING_TIME_BATCHING_KEY in group.columns:
             group_wt_batching = group[WAITING_TIME_BATCHING_KEY].sum()
 
-        group_wt_prioritization = 0
+        group_wt_prioritization = pd.Timedelta(0)
         if WAITING_TIME_PRIORITIZATION_KEY in group.columns:
             group_wt_prioritization = group[WAITING_TIME_PRIORITIZATION_KEY].sum()
 
-        group_wt_contention = 0
+        group_wt_contention = pd.Timedelta(0)
         if WAITING_TIME_CONTENTION_KEY in group.columns:
             group_wt_contention = pd.to_timedelta(group[WAITING_TIME_CONTENTION_KEY]).sum()
 
-        group_wt_unavailability = 0
+        group_wt_unavailability = pd.Timedelta(0)
         if WAITING_TIME_UNAVAILABILITY_KEY in group.columns:
             group_wt_unavailability = pd.to_timedelta(group[WAITING_TIME_UNAVAILABILITY_KEY]).sum()
 
-        group_wt_extraneous = 0
+        group_wt_extraneous = pd.Timedelta(0)
         if WAITING_TIME_EXTRANEOUS_KEY in group.columns:
             group_wt_extraneous = pd.to_timedelta(group[WAITING_TIME_EXTRANEOUS_KEY]).sum()
 

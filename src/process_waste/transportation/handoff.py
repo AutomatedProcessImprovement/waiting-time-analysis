@@ -9,13 +9,14 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
-    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY
+    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries
 from process_waste.calendar.intervals import Interval, pd_interval_to_interval, subtract_intervals, \
     pd_intervals_to_intervals, overall_duration
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
 
 
+@print_section_boundaries('Hand-off analysis')
 def identify(
         log: pd.DataFrame,
         parallel_activities: Dict[str, set],
