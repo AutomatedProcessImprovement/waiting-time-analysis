@@ -7,7 +7,8 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_ids, BATCH_INSTANCE_ID_KEY
+from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_ids, BATCH_INSTANCE_ID_KEY, \
+    log_ids_non_nil
 from ..core import core
 from ..waiting_time import batching
 
@@ -20,8 +21,7 @@ def identify(
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None) -> dict:
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     log = core.read_csv(log_path, log_ids=log_ids)
 

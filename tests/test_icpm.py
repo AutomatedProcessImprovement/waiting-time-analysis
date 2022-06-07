@@ -20,7 +20,7 @@ icpm_data = [
     # {'log_name': 'LoanApp_infRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_24-7_timers_batch.CSV', 'parallel_run': True},
-    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},
+    # {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},
     {'log_name': 'artificial_all_types.csv', 'parallel_run': False, 'calendar': {
         'Marcus-001': [
             {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},

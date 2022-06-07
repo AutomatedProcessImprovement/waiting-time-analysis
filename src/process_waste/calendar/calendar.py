@@ -4,7 +4,7 @@ import pandas as pd
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import default_log_ids, GRANULARITY_MINUTES
+from process_waste import GRANULARITY_MINUTES, log_ids_non_nil
 from process_waste.calendar.intervals import Interval, prosimos_interval_to_interval
 
 UNDIFFERENTIATED_RESOURCE_POOL_KEY = "undifferentiated_resource_pool"
@@ -31,8 +31,7 @@ def make(event_log: pd.DataFrame,
     :param log_ids: The event log IDs to use.
     :return: the calendar dictionary with the resource names as keys and the working time intervals as values.
     """
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     calendar_factory = CalendarFactory(granularity)
     for (index, event) in event_log.iterrows():

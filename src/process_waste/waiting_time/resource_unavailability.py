@@ -1,23 +1,13 @@
 from typing import List, Optional
 
 import pandas as pd
-from tqdm import tqdm
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import WAITING_TIME_UNAVAILABILITY_KEY, default_log_ids, GRANULARITY_MINUTES, log_ids_non_nil
+from process_waste import log_ids_non_nil
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
 from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals, \
-    intersect_intervals, overall_duration
-
-
-def run_analysis(log: pd.DataFrame) -> pd.DataFrame:
-    log[WAITING_TIME_UNAVAILABILITY_KEY] = pd.Timedelta(0)
-    log_calendar = calendar.make(log, granularity=GRANULARITY_MINUTES, differentiated=False)
-    for i in tqdm(log.index, desc='Resource unavailability analysis'):
-        index = pd.Index([i])
-        detect_waiting_time_due_to_unavailability(index, log, log_calendar)
-    return log
+    intersect_intervals
 
 
 def other_processing_events_during_waiting_time_of_event(
@@ -32,8 +22,7 @@ def other_processing_events_during_waiting_time_of_event(
     :param log: Log dataframe.
     :param log_ids: Event log IDs.
     """
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     event = log.loc[event_index]
     if isinstance(event, pd.Series):
@@ -69,8 +58,7 @@ def non_processing_intervals(
     :param log: Log dataframe.
     :param log_ids: Event log IDs.
     """
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     event = log.loc[event_index]
     if isinstance(event, pd.Series):
@@ -97,45 +85,6 @@ def non_processing_intervals(
     result = subtract_intervals(wt_interval, other_processing_events_intervals)
 
     return result
-
-
-def detect_waiting_time_due_to_unavailability(
-        event_index: pd.Index,
-        log: pd.DataFrame,
-        log_calendar: dict,
-        differentiated=True,
-        log_ids: Optional[EventLogIDs] = None):
-    if not log_ids:
-        log_ids = default_log_ids
-
-    event = log.loc[event_index]
-    if isinstance(event, pd.Series):
-        event = event.to_frame().T
-
-    idle_intervals = non_processing_intervals(event_index, log, log_ids=log_ids)
-
-    if differentiated:
-        resource = event[log_ids.resource].values[0]
-    else:
-        resource = UNDIFFERENTIATED_RESOURCE_POOL_KEY
-    # TODO: this are working hours for all the time, we need only for this particular case
-    overall_work_intervals = calendar.resource_working_hours_as_intervals(resource, log_calendar)
-
-    # NOTE: we assume that case events happen during the same day
-    start_time = pd.Timestamp(event[log_ids.start_time].values[0])
-    enabled_time = pd.Timestamp(event[log_ids.enabled_time].values[0])
-    if not start_time.tz:  # TODO: is there a better place to do tz localization?
-        tz = enabled_time.tz if enabled_time.tz else 'UTC'
-        start_time = start_time.tz_localize(tz)
-    if not enabled_time.tz:
-        tz = start_time.tz if start_time.tz else 'UTC'
-        enabled_time = enabled_time.tz_localize(tz)
-
-    wt_intervals = pd_interval_to_interval(pd.Interval(enabled_time, start_time))
-    working_hours_during_wt = intersect_intervals(wt_intervals, overall_work_intervals)
-    unavailability_intervals = subtract_intervals(idle_intervals, working_hours_during_wt)
-    wt_due_to_resource_unavailability = overall_duration(unavailability_intervals)
-    log.loc[event_index, WAITING_TIME_UNAVAILABILITY_KEY] = wt_due_to_resource_unavailability
 
 
 def detect_unavailability_intervals(
@@ -172,12 +121,6 @@ def detect_unavailability_intervals(
     unavailability_intervals = subtract_intervals(idle_intervals, working_hours_during_wt)
 
     return unavailability_intervals
-
-
-def detect_waiting_times_due_to_unavailability(log: pd.DataFrame, log_calendar: dict):
-    for i in log.index:
-        event_index = pd.Index([i])
-        detect_waiting_time_due_to_unavailability(event_index, log, log_calendar)
 
 
 def __ensure_timestamp_tz(timestamp: pd.Timestamp, tz: Optional[str] = None):

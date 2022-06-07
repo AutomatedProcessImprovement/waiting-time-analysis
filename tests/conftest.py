@@ -81,7 +81,6 @@ def event_log(request, assets_path) -> pd.DataFrame:
 
     log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
 
-
     return log
 
 

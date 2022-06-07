@@ -49,8 +49,7 @@ default_configuration = Configuration(
 
 def parallel_activities_with_heuristic_oracle(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> Dict[
     str, set]:
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     config = Configuration(
         log_ids=log_ids,
@@ -114,8 +113,7 @@ def identify_main(
         calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
     from process_waste.calendar.calendar import make as make_calendar
 
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     if not calendar:
         log_calendar = make_calendar(log, granularity=GRANULARITY_MINUTES, log_ids=log_ids)
@@ -231,8 +229,7 @@ def add_enabled_timestamp(log: pd.DataFrame):
 def read_csv(log_path: Path, log_ids: Optional[EventLogIDs] = None, utc: bool = True) -> pd.DataFrame:
     log = pd.read_csv(log_path)
 
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     log = convert_timestamp_columns_to_datetime(log, log_ids, utc=utc)
 

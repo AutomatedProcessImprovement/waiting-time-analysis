@@ -4,7 +4,7 @@ import click
 import pandas as pd
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import default_log_ids, print_section_boundaries
+from process_waste import print_section_boundaries, log_ids_non_nil
 from process_waste.core import core
 
 
@@ -37,8 +37,7 @@ def _identify_ping_pongs_per_case(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
     case_id = kwargs['case_id']
     log_ids = kwargs.get('log_ids')
 
-    if not log_ids:
-        log_ids = default_log_ids
+    log_ids = log_ids_non_nil(log_ids)
 
     case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
     case.reset_index()
