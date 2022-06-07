@@ -1,11 +1,12 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import WAITING_TIME_CONTENTION_KEY, WAITING_TIME_PRIORITIZATION_KEY, default_log_ids, log_ids_non_nil
+from process_waste import WAITING_TIME_CONTENTION_KEY, WAITING_TIME_PRIORITIZATION_KEY, default_log_ids, \
+    log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY
 from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
 
 
@@ -72,39 +73,93 @@ def detect_contention_and_prioritization_intervals(
     if isinstance(event, pd.Series):
         event = event.to_frame().T
 
-    event_enabled_time = event[log_ids.enabled_time].values[0]
-    event_enabled_time = pd.to_datetime(event_enabled_time, utc=True)
-
     other_processing_events = other_processing_events_during_waiting_time_of_event(event_index, log, log_ids=log_ids)
+
+    # NOTE: Co-author: David Chapela
+
+    other_processing_events_in_batch = other_processing_events[~other_processing_events[BATCH_INSTANCE_ID_KEY].isna()][
+        other_processing_events[BATCH_INSTANCE_ID_KEY] == event[BATCH_INSTANCE_ID_KEY].values[0]]
+    other_processing_events_out_batch = pd.concat([
+        other_processing_events,
+        other_processing_events_in_batch
+    ]).drop_duplicates(keep=False)
+
+    # In batch
 
     # determining activities due to prioritization or contention
 
-    events_due_to_prioritization = other_processing_events[
-        other_processing_events[log_ids.enabled_time] > event_enabled_time]
+    actual_event_enabled_time = event[log_ids.enabled_time].values
 
-    events_due_to_contention = other_processing_events[
-        other_processing_events[log_ids.enabled_time] <= event_enabled_time]
+    events_due_to_prioritization = other_processing_events_in_batch[
+        other_processing_events_in_batch[log_ids.enabled_time] > pd.to_datetime(actual_event_enabled_time[0], utc=True)]
+
+    events_due_to_contention = other_processing_events_in_batch[
+        other_processing_events_in_batch[log_ids.enabled_time] <= pd.to_datetime(actual_event_enabled_time[0], utc=True)]
 
     # calculating the waiting time intervals
 
     if events_due_to_contention.size > 0:
-        wt_contention_intervals = (
+        wt_contention_intervals_in_batch = (
             # start time of contention
-            np.maximum(event[log_ids.enabled_time].values, events_due_to_contention[log_ids.start_time].values),
+            np.maximum(actual_event_enabled_time, events_due_to_contention[log_ids.start_time].values),
             # end time of contention
             np.minimum(event[log_ids.start_time].values, events_due_to_contention[log_ids.end_time].values)
         )
     else:
-        wt_contention_intervals = None
+        wt_contention_intervals_in_batch = ([], [])
 
     if events_due_to_prioritization.size > 0:
-        wt_prioritization_intervals = (
+        wt_prioritization_intervals_in_batch = (
             # start time of prioritization
-            np.maximum(event[log_ids.enabled_time].values, events_due_to_prioritization[log_ids.start_time].values),
+            np.maximum(actual_event_enabled_time, events_due_to_prioritization[log_ids.start_time].values),
             # end time of prioritization
             np.minimum(event[log_ids.start_time].values, events_due_to_prioritization[log_ids.end_time].values)
         )
     else:
-        wt_prioritization_intervals = None
+        wt_prioritization_intervals_in_batch = ([], [])
+
+    # Out of batch
+
+    # determining activities due to prioritization or contention
+
+    actual_event_enabled_time = event[BATCH_INSTANCE_ENABLED_KEY].values
+
+    events_due_to_prioritization = other_processing_events_out_batch[
+        other_processing_events_out_batch[log_ids.enabled_time] > pd.to_datetime(actual_event_enabled_time[0], utc=True)]
+
+    events_due_to_contention = other_processing_events_out_batch[
+        other_processing_events_out_batch[log_ids.enabled_time] <= pd.to_datetime(actual_event_enabled_time[0], utc=True)]
+
+    # calculating the waiting time intervals
+
+    if events_due_to_contention.size > 0:
+        wt_contention_intervals_out_batch = (
+            # start time of contention
+            np.maximum(actual_event_enabled_time, events_due_to_contention[log_ids.start_time].values),
+            # end time of contention
+            np.minimum(event[log_ids.start_time].values, events_due_to_contention[log_ids.end_time].values)
+        )
+    else:
+        wt_contention_intervals_out_batch = ([], [])
+
+    if events_due_to_prioritization.size > 0:
+        wt_prioritization_intervals_out_batch = (
+            # start time of prioritization
+            np.maximum(actual_event_enabled_time, events_due_to_prioritization[log_ids.start_time].values),
+            # end time of prioritization
+            np.minimum(event[log_ids.start_time].values, events_due_to_prioritization[log_ids.end_time].values)
+        )
+    else:
+        wt_prioritization_intervals_out_batch = ([], [])
+
+    wt_contention_intervals = (
+        list(wt_contention_intervals_in_batch[0]) + list(wt_contention_intervals_out_batch[0]),
+        list(wt_contention_intervals_in_batch[1]) + list(wt_contention_intervals_out_batch[1])
+    )
+
+    wt_prioritization_intervals = (
+        list(wt_prioritization_intervals_in_batch[0]) + list(wt_prioritization_intervals_out_batch[0]),
+        list(wt_prioritization_intervals_in_batch[1]) + list(wt_prioritization_intervals_out_batch[1])
+    )
 
     return wt_contention_intervals, wt_prioritization_intervals

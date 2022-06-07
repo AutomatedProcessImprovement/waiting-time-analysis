@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Dict
 
 import click
 import pandas as pd
@@ -7,15 +7,19 @@ import pandas as pd
 from batch_processing_analysis.config import EventLogIDs
 from . import handoff
 from . import pingpong
-from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_ids
+from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_ids, BATCH_INSTANCE_ID_KEY
 from ..core import core
 from ..waiting_time import batching
 
+REPORT_INDEX_COLUMNS = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
 
-def identify(log_path: Path,
-             parallel_run=True,
-             log_ids: Optional[EventLogIDs] = None,
-             preprocessing_funcs: Optional[List[Callable]] = None) -> dict:
+
+def identify(
+        log_path: Path,
+        parallel_run=True,
+        log_ids: Optional[EventLogIDs] = None,
+        preprocessing_funcs: Optional[List[Callable]] = None,
+        calendar: Optional[Dict] = None) -> dict:
     if not log_ids:
         log_ids = default_log_ids
 
@@ -32,39 +36,42 @@ def identify(log_path: Path,
 
     # taking batch creation time from the batch analysis
     log = batching.add_columns_from_batch_analysis(
-        log, column_names=(BATCH_INSTANCE_ENABLED_KEY, ), log_ids=log_ids)
+        log, column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY), log_ids=log_ids)
 
     # total waiting time
     log[WAITING_TIME_TOTAL_KEY] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
     parallel_activities = core.parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
-    handoff_report = handoff.identify(log, parallel_activities, parallel_run, log_ids=log_ids)
+    handoff_report = handoff.identify(log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar)
     pingpong_report = pingpong.identify(log, parallel_activities, parallel_run, log_ids=log_ids)
 
-    # identifying common records for both reports
-    index_columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
-    handoff_report = handoff_report.set_index(index_columns)
+    return {'handoff': handoff_report, 'pingpong': pingpong_report}
 
-    # if pingpong_report is not None and not pingpong_report.empty:
-    #     pingpong_report = pingpong_report.set_index(index_columns)
-        # common_index = handoff_report.index.intersection(pingpong_report.index)
+
+def __adjust_reports(handoff_report, pingpong_report):
+    """Adjusts reports' waiting time, so that ping-pongs are not counted as hand-offs."""
+
+    # identifying common records for both reports
+    handoff_report = handoff_report.set_index(REPORT_INDEX_COLUMNS)
+
+    if pingpong_report is not None and not pingpong_report.empty:
+        pingpong_report = pingpong_report.set_index(REPORT_INDEX_COLUMNS)
+        common_index = handoff_report.index.intersection(pingpong_report.index)
 
         # metrics to update
-        # wt_total_key = WAITING_TIME_TOTAL_KEY
-        # wt_total_sec_key = 'wt_total_seconds'
-        # frequency_key = 'frequency'
+        wt_total_key = WAITING_TIME_TOTAL_KEY
+        wt_total_sec_key = 'wt_total_seconds'
+        frequency_key = 'frequency'
 
-        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=wt_total_key)
-        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index,
-        #                           metric_key=wt_total_sec_key)
-        # _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=wt_total_key)
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index,
+                                  metric_key=wt_total_sec_key)
+        _subtract_metrics_inplace(handoff_report, pingpong_report, common_index=common_index, metric_key=frequency_key)
 
     # converting index back to columns
-    handoff_report = handoff_report.reset_index()
+    handoff_report.reset_index(inplace=True)
     if pingpong_report is not None and not pingpong_report.empty:
-        pingpong_report = pingpong_report.reset_index()
-
-    return {'handoff': handoff_report, 'pingpong': pingpong_report}
+        pingpong_report.reset_index(inplace=True)
 
 
 def _subtract_metrics_inplace(df1: pd.DataFrame, df2: pd.DataFrame, common_index: pd.MultiIndex, metric_key: str):

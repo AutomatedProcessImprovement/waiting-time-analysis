@@ -26,6 +26,7 @@ WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 BATCH_INSTANCE_ENABLED_KEY = 'batch_instance_enabled'
+BATCH_INSTANCE_ID_KEY = 'batch_instance_id'
 
 GRANULARITY_MINUTES = 15
 
@@ -109,15 +110,20 @@ def identify_main(
         identify_fn_per_case,
         join_fn,
         parallel_run=True,
-        log_ids: Optional[EventLogIDs] = None) -> Optional[pd.DataFrame]:
-    from process_waste.calendar import calendar
+        log_ids: Optional[EventLogIDs] = None,
+        calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
+    from process_waste.calendar.calendar import make as make_calendar
 
     if not log_ids:
         log_ids = default_log_ids
 
+    if not calendar:
+        log_calendar = make_calendar(log, granularity=GRANULARITY_MINUTES, log_ids=log_ids)
+    else:
+        log_calendar = calendar
+
     log_grouped = log.groupby(by=log_ids.case)
     all_items = []
-    log_calendar = calendar.make(log, granularity=GRANULARITY_MINUTES, log_ids=log_ids)
     if parallel_run:
         n_cores = multiprocessing.cpu_count() - 1
         handles = []
@@ -154,12 +160,21 @@ def identify_main(
         return None
 
     result: pd.DataFrame = join_fn(all_items)
-    result['wt_total_seconds'] = result[WAITING_TIME_TOTAL_KEY] / np.timedelta64(1, 's')
+
+    if result is not None:
+        result['wt_total_seconds'] = result[WAITING_TIME_TOTAL_KEY] / np.timedelta64(1, 's')
+
     return result
 
 
-def join_per_case_items(items: List[pd.DataFrame]) -> pd.DataFrame:
+def join_per_case_items(items: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
     """Joins a list of items summing up frequency and duration."""
+
+    items = list(filter(lambda df: not df.empty, items))
+
+    if len(items) == 0:
+        return None
+
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
     grouped = pd.concat(items).groupby(columns)
     result = pd.DataFrame(columns=columns)

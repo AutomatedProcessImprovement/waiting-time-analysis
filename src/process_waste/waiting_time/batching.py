@@ -6,19 +6,20 @@ import pandas as pd
 
 from batch_processing_analysis.analysis import BatchProcessingAnalysis
 from batch_processing_analysis.config import EventLogIDs, Configuration
-from process_waste import print_section_boundaries, default_log_ids, BATCH_INSTANCE_ENABLED_KEY
+from process_waste import print_section_boundaries, default_log_ids, BATCH_INSTANCE_ENABLED_KEY, \
+    convert_timestamp_columns_to_datetime
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
-BATCH_MIN_SIZE = 10
+BATCH_MIN_SIZE = 1
 
 
 def run_analysis(event_log: pd.DataFrame,
-                 log_ids: EventLogIDs = default_log_ids,
+                 log_ids: EventLogIDs = None,
                  rscript_path: str = '/usr/local/bin/Rscript') -> pd.DataFrame:
     global RSCRIPT_BIN_PATH
 
     config = Configuration()
-    config.log_ids = log_ids
+    config.log_ids = log_ids if log_ids else default_log_ids
     config.PATH_R_EXECUTABLE = rscript_path if RSCRIPT_BIN_PATH is None else RSCRIPT_BIN_PATH
     config.report_batch_checkpoints = True
     config.min_batch_instance_size = BATCH_MIN_SIZE
@@ -35,6 +36,9 @@ def add_columns_from_batch_analysis(
         log,
         column_names: tuple = (BATCH_INSTANCE_ENABLED_KEY,),
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    if not log_ids:
+        log_ids = default_log_ids
+
     batch_log = run_analysis(log, log_ids=log_ids)
     log[log_ids.start_time] = log[log_ids.start_time].apply(__nullify_microseconds)
     log[log_ids.end_time] = log[log_ids.end_time].apply(__nullify_microseconds)
@@ -44,6 +48,9 @@ def add_columns_from_batch_analysis(
             [log_ids.case, log_ids.activity, log_ids.start_time, log_ids.enabled_time, *column_names]
         ],
         how='left', on=[log_ids.case, log_ids.activity, log_ids.start_time])
+
+    result = convert_timestamp_columns_to_datetime(result, log_ids, (BATCH_INSTANCE_ENABLED_KEY,))
+
     return result
 
 

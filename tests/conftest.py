@@ -6,8 +6,10 @@ import pandas as pd
 import pytest
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, EventLogIDs
-from process_waste import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
+from process_waste import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, \
+    BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY
 from process_waste.core import core
+from process_waste.waiting_time import batching
 
 
 @pytest.fixture(scope='module')
@@ -73,8 +75,13 @@ def config() -> Configuration:
 def event_log(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.node.get_closest_marker('log_path').args[0]
     log = core.read_csv(log_path)
-    core.add_enabled_timestamp(log)
+
+    log = batching.add_columns_from_batch_analysis(
+        log, column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY))
+
     log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
+
+
     return log
 
 

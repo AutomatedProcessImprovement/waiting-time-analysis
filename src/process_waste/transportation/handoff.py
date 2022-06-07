@@ -21,7 +21,8 @@ def identify(
         log: pd.DataFrame,
         parallel_activities: Dict[str, set],
         parallel_run=True,
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+        log_ids: Optional[EventLogIDs] = None,
+        calendar: Optional[Dict] = None) -> pd.DataFrame:
     click.echo(f'Handoff identification. Parallel run: {parallel_run}')
     result = core.identify_main(
         log=log,
@@ -29,7 +30,8 @@ def identify(
         identify_fn_per_case=__identify_handoffs_per_case_and_make_report,
         join_fn=core.join_per_case_items,
         parallel_run=parallel_run,
-        log_ids=log_ids)
+        log_ids=log_ids,
+        calendar=calendar)
     return result
 
 
@@ -188,6 +190,16 @@ def __make_report(
             __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
         wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
 
+        if destination[log_ids.case] == 3 and destination[log_ids.activity] == 'D':
+            print('ho')
+
+        if wt_total > pd.Timedelta(0):
+            print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
+            print(f'wt_batching_interval: {wt_batching_interval}')
+            print(f'wt_contention_intervals: {wt_contention_intervals}')
+            print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
+            print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
+
         wt_analysis = __wt_durations_from_wt_intervals(wt_batching_interval, wt_contention_intervals,
                                                        wt_prioritization_intervals,
                                                        wt_unavailability_intervals, wt_total)
@@ -303,7 +315,7 @@ def __wt_durations_from_wt_intervals(
         return _intervals
 
     if not wt_batching_interval and not wt_contention_intervals and not wt_prioritization_intervals and not wt_unavailability_intervals:
-        return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
+        return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_total)
 
     # waiting time analysis
 
