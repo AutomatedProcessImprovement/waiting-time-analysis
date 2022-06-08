@@ -190,8 +190,17 @@ def __make_report(
             __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
         wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
 
-        if destination[log_ids.case] == 3 and destination[log_ids.activity] == 'D':
-            print('ho')
+        wt_analysis = __wt_durations_from_wt_intervals(
+            wt_batching_interval,
+            wt_contention_intervals,
+            wt_prioritization_intervals,
+            wt_unavailability_intervals, wt_total)
+
+        wt_batching = wt_analysis.batching
+        wt_contention = wt_analysis.contention
+        wt_prioritization = wt_analysis.prioritization
+        wt_unavailability = wt_analysis.unavailability
+        wt_extraneous = wt_analysis.extraneous
 
         if wt_total > pd.Timedelta(0):
             print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
@@ -199,16 +208,7 @@ def __make_report(
             print(f'wt_contention_intervals: {wt_contention_intervals}')
             print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
             print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
-
-        wt_analysis = __wt_durations_from_wt_intervals(wt_batching_interval, wt_contention_intervals,
-                                                       wt_prioritization_intervals,
-                                                       wt_unavailability_intervals, wt_total)
-
-        wt_batching = wt_analysis.batching
-        wt_contention = wt_analysis.contention
-        wt_prioritization = wt_analysis.prioritization
-        wt_unavailability = wt_analysis.unavailability
-        wt_extraneous = wt_analysis.extraneous
+            print(f'wt_extraneous: {wt_extraneous}')
 
         # handoff type identification
         if source[log_ids.resource] == destination[log_ids.resource]:
@@ -305,7 +305,7 @@ def __wt_durations_from_wt_intervals(
     wt_contention = pd.Timedelta(0)
     wt_prioritization = pd.Timedelta(0)
     wt_unavailability = pd.Timedelta(0)
-    wt_extraneous = pd.Timedelta(0)
+    wt_extraneous = wt_total
 
     def make_intervals(_intervals: Tuple[List, list]) -> List[pd.Interval]:
         _intervals = list(zip(_intervals[0], _intervals[1]))
@@ -315,7 +315,7 @@ def __wt_durations_from_wt_intervals(
         return _intervals
 
     if not wt_batching_interval and not wt_contention_intervals and not wt_prioritization_intervals and not wt_unavailability_intervals:
-        return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_total)
+        return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
 
     # waiting time analysis
 

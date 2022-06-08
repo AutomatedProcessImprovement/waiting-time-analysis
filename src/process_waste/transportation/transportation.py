@@ -11,6 +11,7 @@ from .. import WAITING_TIME_TOTAL_KEY, BATCH_INSTANCE_ENABLED_KEY, default_log_i
     log_ids_non_nil
 from ..core import core
 from ..waiting_time import batching
+from ..waiting_time.batching import BATCH_MIN_SIZE
 
 REPORT_INDEX_COLUMNS = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
 
@@ -20,7 +21,8 @@ def identify(
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
-        calendar: Optional[Dict] = None) -> dict:
+        calendar: Optional[Dict] = None,
+        batch_size: int = BATCH_MIN_SIZE) -> dict:
     log_ids = log_ids_non_nil(log_ids)
 
     log = core.read_csv(log_path, log_ids=log_ids)
@@ -36,7 +38,10 @@ def identify(
 
     # taking batch creation time from the batch analysis
     log = batching.add_columns_from_batch_analysis(
-        log, column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY), log_ids=log_ids)
+        log,
+        column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY),
+        log_ids=log_ids,
+        batch_size=batch_size)
 
     # total waiting time
     log[WAITING_TIME_TOTAL_KEY] = log[log_ids.start_time] - log[log_ids.enabled_time]

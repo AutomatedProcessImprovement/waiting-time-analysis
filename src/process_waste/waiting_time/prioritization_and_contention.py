@@ -22,15 +22,17 @@ def detect_contention_and_prioritization_intervals(
 
     # determining intervals due to prioritization or contention depending on batching
 
-    other_processing_events_in_batch = other_processing_events[~other_processing_events[BATCH_INSTANCE_ID_KEY].isna()][
-        other_processing_events[BATCH_INSTANCE_ID_KEY] == event[BATCH_INSTANCE_ID_KEY].values[0]]
+    event_batch_instance_id = event[BATCH_INSTANCE_ID_KEY].values[0]
+    other_processing_events_in_batch = other_processing_events.query(
+        f'{BATCH_INSTANCE_ID_KEY} == @event_batch_instance_id')
 
     other_processing_events_out_batch = pd.concat([
         other_processing_events,
         other_processing_events_in_batch
     ]).drop_duplicates(keep=False)
 
-    def __detect_intervals(processing_events: pd.DataFrame, actual_event_enabled_time: pd.Series) -> Tuple[List, List]:
+    def __detect_intervals(processing_events: pd.DataFrame, actual_event_enabled_time: pd.Series) -> Tuple[
+        List[List], List[List]]:
         events_due_to_prioritization = processing_events[
             processing_events[log_ids.enabled_time] > pd.to_datetime(actual_event_enabled_time[0], utc=True)]
 
@@ -59,7 +61,21 @@ def detect_contention_and_prioritization_intervals(
         else:
             wt_prioritization_intervals = ([], [])
 
-        return wt_contention_intervals, wt_prioritization_intervals
+        # filtering out intervals where start_time > end_time
+
+        wt_contention_intervals_filtered = [[], []]
+        for i in range(len(wt_contention_intervals[0])):
+            if wt_contention_intervals[0][i] <= wt_contention_intervals[1][i]:
+                wt_contention_intervals_filtered[0].append(wt_contention_intervals[0][i])
+                wt_contention_intervals_filtered[1].append(wt_contention_intervals[1][i])
+
+        wt_prioritization_intervals_filtered = [[], []]
+        for i in range(len(wt_prioritization_intervals[0])):
+            if wt_prioritization_intervals[0][i] <= wt_prioritization_intervals[1][i]:
+                wt_prioritization_intervals_filtered[0].append(wt_prioritization_intervals[0][i])
+                wt_prioritization_intervals_filtered[1].append(wt_prioritization_intervals[1][i])
+
+        return wt_contention_intervals_filtered, wt_prioritization_intervals_filtered
 
     actual_event_enabled_time = event[log_ids.enabled_time].values
     wt_contention_intervals_in_batch, wt_prioritization_intervals_in_batch = __detect_intervals(

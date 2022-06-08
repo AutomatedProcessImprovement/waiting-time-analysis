@@ -6,124 +6,126 @@ from process_waste import identify
 
 icpm_data = [
     # {'log_name': 'LoanApp_fewRes_9-5_noTimers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_fewRes_9-5_noTimers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_fewRes_9-5_timers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_fewRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_fewRes_24-7_timers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_9-5_noTimers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_9-5_timers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_24-7_timers_batch.CSV', 'parallel_run': True},
-    # {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True},
-    {'log_name': 'artificial_all_types.csv', 'parallel_run': False, 'calendar': {
-        'Marcus-001': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-        ],
-        'Anya-001': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Dom-001': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Carmine-001': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
 
-        'Marcus-002': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-        ],
-        'Anya-002': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Dom-002': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Carmine-002': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-
-        'Marcus-003': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
-        ],
-        'Anya-003': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Dom-003': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-        'Carmine-003': [
-            {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-            {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
-        ],
-    }},
+    {'log_name': 'LoanApp_fewRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'artificial_all_types.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': {
+    #     'Marcus-001': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Anya-001': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Dom-001': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Carmine-001': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #
+    #     'Marcus-002': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Anya-002': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Dom-002': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Carmine-002': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #
+    #     'Marcus-003': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '12:30:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Anya-003': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Dom-003': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    #     'Carmine-003': [
+    #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'TUESDAY', 'to': 'TUESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'WEDNESDAY', 'to': 'WEDNESDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'THURSDAY', 'to': 'THURSDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #         {'from': 'FRIDAY', 'to': 'FRIDAY', 'beginTime': '10:00:00', 'endTime': '20:00:00'},
+    #     ],
+    # }},
+    # {'log_name': 'Production.csv', 'parallel_run': True, 'batch_size': 2},
 ]
 
 
@@ -137,10 +139,59 @@ def __filter_specific_case(event_log: pd.DataFrame) -> pd.DataFrame:
     return event_log
 
 
+def __generate_calendars(log_name: str):
+    prefixes = ["Clerk", "Loan Officer", "AML Investigator", "Appraiser", "Senior Officer", "Applicant"]
+    calendars_24_7 = {}
+    calendars_9_5 = {}
+    for prefix in prefixes:
+        for i in range(1000):
+            resource = "{}-{number:06}".format(prefix, number=(i + 1))
+            calendars_24_7[resource] = [
+                {'from': 'MONDAY', 'beginTime': '00:00:00', 'to': 'MONDAY', 'endTime': '11:59:59'},
+                {'from': 'TUESDAY', 'beginTime': '00:00:00', 'to': 'TUESDAY', 'endTime': '11:59:59'},
+                {'from': 'WEDNESDAY', 'beginTime': '00:00:00', 'to': 'WEDNESDAY', 'endTime': '11:59:59'},
+                {'from': 'THURSDAY', 'beginTime': '00:00:00', 'to': 'THURSDAY', 'endTime': '11:59:59'},
+                {'from': 'FRIDAY', 'beginTime': '00:00:00', 'to': 'FRIDAY', 'endTime': '11:59:59'},
+                {'from': 'SATURDAY', 'beginTime': '00:00:00', 'to': 'SATURDAY', 'endTime': '11:59:59'},
+                {'from': 'SUNDAY', 'beginTime': '00:00:00', 'to': 'SUNDAY', 'endTime': '11:59:59'}
+            ]
+            if prefix == "Loan Officer":
+                calendars_9_5[resource] = [
+                    {'from': 'MONDAY', 'beginTime': '09:00:00', 'to': 'MONDAY', 'endTime': '17:00:00'},
+                    {'from': 'TUESDAY', 'beginTime': '09:00:00', 'to': 'TUESDAY', 'endTime': '17:00:00'},
+                    {'from': 'WEDNESDAY', 'beginTime': '09:00:00', 'to': 'WEDNESDAY', 'endTime': '17:00:00'}
+                ]
+            elif prefix == "Senior Officer":
+                calendars_9_5[resource] = [
+                    {'from': 'THURSDAY', 'beginTime': '09:00:00', 'to': 'THURSDAY', 'endTime': '17:00:00'},
+                    {'from': 'FRIDAY', 'beginTime': '09:00:00', 'to': 'FRIDAY', 'endTime': '17:00:00'}
+                ]
+            else:
+                calendars_9_5[resource] = [
+                    {'from': 'MONDAY', 'beginTime': '09:00:00', 'to': 'MONDAY', 'endTime': '17:00:00'},
+                    {'from': 'TUESDAY', 'beginTime': '09:00:00', 'to': 'TUESDAY', 'endTime': '17:00:00'},
+                    {'from': 'WEDNESDAY', 'beginTime': '09:00:00', 'to': 'WEDNESDAY', 'endTime': '17:00:00'},
+                    {'from': 'THURSDAY', 'beginTime': '09:00:00', 'to': 'THURSDAY', 'endTime': '17:00:00'},
+                    {'from': 'FRIDAY', 'beginTime': '09:00:00', 'to': 'FRIDAY', 'endTime': '17:00:00'}
+                ]
+
+    # log_name in the format of "LoanApp_fewRes_9-5_noTimers.CSV"
+    calendar_time = log_name.split('_')[2]
+    if calendar_time == '9-5':
+        return calendars_9_5
+    elif calendar_time == '24-7':
+        return calendars_24_7
+    else:
+        raise Exception("Unknown calendar time: {}".format(calendar_time))
+
+
 @pytest.mark.icpm
 @pytest.mark.integration
-@pytest.mark.parametrize('test_data', icpm_data,
-                         ids=map(lambda x: f"{x['log_name']}, parallel={x['parallel_run']}", icpm_data))
+@pytest.mark.parametrize(
+    'test_data', icpm_data,
+    ids=map(
+        lambda x: f"{x['log_name']}, parallel={x['parallel_run']}, batch_size={x['batch_size']}",
+        icpm_data))
 def test_handoffs_for_icpm_conference(assets_path, test_data):
     log_path = assets_path / 'icpm/handoff-logs' / test_data['log_name']
     parallel = test_data['parallel_run']
@@ -153,9 +204,11 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
     log_ids.activity = 'Activity'
     log_ids.resource = 'Resource'
 
-    calendar = test_data['calendar'] if 'calendar' in test_data else None
+    calendar = test_data['calendar'] if 'calendar' in test_data else __generate_calendars(test_data['log_name'])
 
-    result = identify(log_path, parallel, log_ids=log_ids, calendar=calendar)
+    batch_size = test_data['batch_size']
+
+    result = identify(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'

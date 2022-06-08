@@ -15,14 +15,15 @@ BATCH_MIN_SIZE = 1
 
 def run_analysis(event_log: pd.DataFrame,
                  log_ids: EventLogIDs = None,
-                 rscript_path: str = '/usr/local/bin/Rscript') -> pd.DataFrame:
+                 rscript_path: str = '/usr/local/bin/Rscript',
+                 batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
     global RSCRIPT_BIN_PATH
 
     config = Configuration()
     config.log_ids = log_ids if log_ids else default_log_ids
     config.PATH_R_EXECUTABLE = rscript_path if RSCRIPT_BIN_PATH is None else RSCRIPT_BIN_PATH
     config.report_batch_checkpoints = True
-    config.min_batch_instance_size = BATCH_MIN_SIZE
+    config.min_batch_instance_size = batch_size
     click.echo(f'Running batch processing analysis with Rscript at: {config.PATH_R_EXECUTABLE}')
     try:
         return BatchProcessingAnalysis(event_log, config).analyze_batches()
@@ -35,10 +36,11 @@ def run_analysis(event_log: pd.DataFrame,
 def add_columns_from_batch_analysis(
         log,
         column_names: tuple = (BATCH_INSTANCE_ENABLED_KEY,),
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+        log_ids: Optional[EventLogIDs] = None,
+        batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
     log_ids = log_ids_non_nil(log_ids)
 
-    batch_log = run_analysis(log, log_ids=log_ids)
+    batch_log = run_analysis(log, log_ids=log_ids, batch_size=batch_size)
     log[log_ids.start_time] = log[log_ids.start_time].apply(__nullify_microseconds)
     log[log_ids.end_time] = log[log_ids.end_time].apply(__nullify_microseconds)
     result = pd.merge(
