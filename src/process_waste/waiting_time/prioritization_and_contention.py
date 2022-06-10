@@ -82,6 +82,8 @@ def detect_contention_and_prioritization_intervals(
         other_processing_events_in_batch, actual_event_enabled_time)
 
     actual_event_enabled_time = event[BATCH_INSTANCE_ENABLED_KEY].values
+    if pd.isna(actual_event_enabled_time).all():
+        actual_event_enabled_time = event[log_ids.enabled_time].values
     wt_contention_intervals_out_batch, wt_prioritization_intervals_out_batch = __detect_intervals(
         other_processing_events_out_batch, actual_event_enabled_time)
 

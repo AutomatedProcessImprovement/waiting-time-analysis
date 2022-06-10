@@ -14,14 +14,14 @@ icpm_data = [
     # {'log_name': 'LoanApp_infRes_24-7_noTimers_batch.CSV', 'parallel_run': True},
     # {'log_name': 'LoanApp_infRes_24-7_timers_batch.CSV', 'parallel_run': True},
 
-    {'log_name': 'LoanApp_fewRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_fewRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_fewRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
     {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
-    {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_infRes_9-5_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_infRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_infRes_24-7_noTimers.CSV', 'parallel_run': True, 'batch_size': 10},
+    # {'log_name': 'LoanApp_infRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
     # {'log_name': 'artificial_all_types.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': {
     #     'Marcus-001': [
     #         {'from': 'MONDAY', 'to': 'MONDAY', 'beginTime': '10:00:00', 'endTime': '12:00:00'},
@@ -147,13 +147,13 @@ def __generate_calendars(log_name: str):
         for i in range(1000):
             resource = "{}-{number:06}".format(prefix, number=(i + 1))
             calendars_24_7[resource] = [
-                {'from': 'MONDAY', 'beginTime': '00:00:00', 'to': 'MONDAY', 'endTime': '11:59:59'},
-                {'from': 'TUESDAY', 'beginTime': '00:00:00', 'to': 'TUESDAY', 'endTime': '11:59:59'},
-                {'from': 'WEDNESDAY', 'beginTime': '00:00:00', 'to': 'WEDNESDAY', 'endTime': '11:59:59'},
-                {'from': 'THURSDAY', 'beginTime': '00:00:00', 'to': 'THURSDAY', 'endTime': '11:59:59'},
-                {'from': 'FRIDAY', 'beginTime': '00:00:00', 'to': 'FRIDAY', 'endTime': '11:59:59'},
-                {'from': 'SATURDAY', 'beginTime': '00:00:00', 'to': 'SATURDAY', 'endTime': '11:59:59'},
-                {'from': 'SUNDAY', 'beginTime': '00:00:00', 'to': 'SUNDAY', 'endTime': '11:59:59'}
+                {'from': 'MONDAY', 'beginTime': '00:00:00', 'to': 'MONDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'TUESDAY', 'beginTime': '00:00:00', 'to': 'TUESDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'WEDNESDAY', 'beginTime': '00:00:00', 'to': 'WEDNESDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'THURSDAY', 'beginTime': '00:00:00', 'to': 'THURSDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'FRIDAY', 'beginTime': '00:00:00', 'to': 'FRIDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'SATURDAY', 'beginTime': '00:00:00', 'to': 'SATURDAY', 'endTime': '23:59:59.999999'},
+                {'from': 'SUNDAY', 'beginTime': '00:00:00', 'to': 'SUNDAY', 'endTime': '23:59:59.999999'}
             ]
             if prefix == "Loan Officer":
                 calendars_9_5[resource] = [

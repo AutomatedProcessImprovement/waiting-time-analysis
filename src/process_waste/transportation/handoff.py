@@ -1,6 +1,4 @@
-import operator
 from collections import namedtuple
-from functools import reduce
 from typing import Dict, Optional, Tuple, List
 
 import click
@@ -201,14 +199,6 @@ def __make_report(
         wt_prioritization = wt_analysis.prioritization
         wt_unavailability = wt_analysis.unavailability
         wt_extraneous = wt_analysis.extraneous
-
-        if wt_total > pd.Timedelta(0):
-            print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
-            print(f'wt_batching_interval: {wt_batching_interval}')
-            print(f'wt_contention_intervals: {wt_contention_intervals}')
-            print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
-            print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
-            print(f'wt_extraneous: {wt_extraneous}')
 
         # handoff type identification
         if source[log_ids.resource] == destination[log_ids.resource]:
