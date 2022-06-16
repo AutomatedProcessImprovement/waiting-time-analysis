@@ -10,7 +10,7 @@ from process_waste.transportation.handoff import __remove_overlapping_time_from_
 @pytest.mark.log_path('PurchasingExample.csv')
 def test_negative_duration(event_log, config):
     parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
-    result = handoff.identify(event_log, parallel_activities, parallel_run=False)
+    result = handoff.identify(event_log, parallel_activities, parallel_run=True)
     assert sum(result['wt_total_seconds'] < 0) == 0
 
 

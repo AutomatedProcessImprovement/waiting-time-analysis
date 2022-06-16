@@ -7,7 +7,7 @@ from process_waste.transportation import identify
 @pytest.mark.integration
 def test_identify(assets_path):
     log_path = assets_path / 'PurchasingExampleModified.csv'
-    result = identify(log_path, parallel_run=False, log_ids=default_log_ids)
+    result = identify(log_path, parallel_run=True, log_ids=default_log_ids)
 
     assert result is not None
     assert result['handoff'] is not None
