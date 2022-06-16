@@ -2,7 +2,9 @@ import pandas as pd
 import pytest
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import identify
+from process_waste import identify, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
+    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
+from process_waste.core import core
 
 manual_log_calendar = {
     'Marcus': [
@@ -48,7 +50,23 @@ manual_log_calendar = {
 }
 
 icpm_data = [
-    {'log_name': 'handoff-test.csv', 'parallel_run': False, 'batch_size': 10},
+    # Automated testing
+
+    {'log_name': 'handoff-test.csv', 'parallel_run': False, 'batch_size': 10, 'expected': 'handoff-test_expected.csv'},
+    {'log_name': 'manual_log_1.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+     'expected': 'manual_log_1_expected.csv'},
+    {'log_name': 'manual_log_2.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+     'expected': 'manual_log_2_expected.csv'},
+    {'log_name': 'manual_log_3.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+     'expected': 'manual_log_3_expected.csv'},
+    {'log_name': 'manual_log_4.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+     'expected': 'manual_log_4_expected.csv'},
+    {'log_name': 'manual_log_5.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+     'expected': 'manual_log_5_expected.csv'},
+
+    # Manual testing
+
+    # {'log_name': 'Production.csv', 'parallel_run': True, 'batch_size': 2},
     # {'log_name': 'LoanApp_infRes_9-5_timers_prior.CSV', 'parallel_run': True, 'batch_size': 10},
     # {'log_name': 'LoanApp_infRes_24-7_timers_prior.CSV', 'parallel_run': True, 'batch_size': 10},
     # {'log_name': 'LoanApp_fewRes_9-5_timers.CSV', 'parallel_run': True, 'batch_size': 10},
@@ -81,12 +99,6 @@ icpm_data = [
     # {'log_name': 'LoanApp_infRes_24-7_noTimers_prior.CSV', 'parallel_run': True, 'batch_size': 10},
     # {'log_name': 'LoanApp_infRes_24-7_timers_prior_batch.CSV', 'parallel_run': True, 'batch_size': 10},
     # {'log_name': 'LoanApp_fewRes_24-7_timers.CSV', 'parallel_run': True, 'batch_size': 10},
-    # {'log_name': 'manual_log_1.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar},
-    # {'log_name': 'manual_log_2.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar},
-    # {'log_name': 'manual_log_3.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar},
-    # {'log_name': 'manual_log_4.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar},
-    # {'log_name': 'manual_log_5.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar},
-    # {'log_name': 'Production.csv', 'parallel_run': True, 'batch_size': 2},
 ]
 
 
@@ -174,7 +186,31 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
 
-    # handoff
+    # test case expected values if available
+    expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if test_data['expected'] else None
+    expected_data = core.read_csv(expected_path) if expected_path else None
+
+    # assert
+    if expected_data is not None:
+        expected_data[WAITING_TIME_TOTAL_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_TOTAL_KEY])
+        expected_data[WAITING_TIME_BATCHING_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_BATCHING_KEY])
+        expected_data[WAITING_TIME_CONTENTION_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_CONTENTION_KEY])
+        expected_data[WAITING_TIME_PRIORITIZATION_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_PRIORITIZATION_KEY])
+        expected_data[WAITING_TIME_UNAVAILABILITY_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_UNAVAILABILITY_KEY])
+        expected_data[WAITING_TIME_EXTRANEOUS_KEY] = pd.to_timedelta(expected_data[WAITING_TIME_EXTRANEOUS_KEY])
+
+        result['handoff']['cases'] = result['handoff']['cases'].astype(object)
+        expected_data['cases'] = expected_data['cases'].astype(object)
+
+        columns_to_compare = [
+            'source_activity', 'source_resource', 'destination_activity', 'destination_resource', 'frequency',
+            WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY,
+            WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
+        ]
+
+        assert result['handoff'][columns_to_compare].equals(expected_data[columns_to_compare])
+
+    # save handoff results
     if result['handoff'] is not None:
         handoff_output_path = output_dir / (log_path.stem + '_handoff')
         handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)

@@ -2,6 +2,7 @@ from collections import namedtuple
 from typing import Dict, Optional, Tuple, List
 
 import click
+import numpy as np
 import pandas as pd
 
 from batch_processing_analysis.config import EventLogIDs
@@ -13,7 +14,7 @@ from process_waste.calendar.intervals import Interval, pd_interval_to_interval, 
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
 
-TRANSITION_COLUMN_KEY = 'transition_source'
+TRANSITION_COLUMN_KEY = 'transition_source_index'
 
 
 @print_section_boundaries('Hand-off analysis')
@@ -43,7 +44,7 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     log_ids = log_ids_non_nil(kwargs.get('log_ids'))
 
     case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
-    case.reset_index(inplace=True, drop=True)
+    # case.reset_index(inplace=True, drop=True)
 
     # converting timestamps to datetime
     log = convert_timestamp_columns_to_datetime(log, log_ids)
@@ -52,10 +53,13 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     # __mark_strict_handoffs(case, parallel_activities, log_ids=log_ids)
     # __mark_self_handoffs(case, parallel_activities, log_ids=log_ids)
     __mark_activity_transitions(case, parallel_activities, log_ids=log_ids)
-    potential_handoffs = case[~case['handoff_type'].isna()]
+    # potential_handoffs = case[~case['handoff_type'].isna()]
 
     # handoffs_index = potential_handoffs.index
     # handoffs = __make_report(case, handoffs_index, log_calendar, log, log_ids=log_ids)
+
+    __mark_handoffs_only(case, log_ids=log_ids)
+
     handoffs = __analyze_transitions(case, log_calendar, log, log_ids=log_ids)
 
     handoffs_with_frequency = __calculate_frequency_and_duration(handoffs)
@@ -80,24 +84,28 @@ def __mark_activity_transitions(
         log_ids: Optional[EventLogIDs] = None):
     log_ids = log_ids_non_nil(log_ids)
 
-    # NOTE: we assume (a) the case was sorted by end time and (b) index has sequential integer values (it was reset)
+    # NOTE: we assume (a) the case was sorted by end time
 
     if not parallel_activities:
         parallel_activities = {}
 
+    case[TRANSITION_COLUMN_KEY] = np.NAN
+
     # processing the case backwards
-    reversed_index = reversed(case.index)
-    for index in reversed_index:
+    reversed_index = list(reversed(case.index))
+    for i in range(len(reversed_index)):
         non_concurrent_previous_event_found = False
 
+        index = reversed_index[i]
         activity = case.loc[index, log_ids.activity]
         parallel_activities_for_current_event = parallel_activities.get(activity, [])
 
-        previous_event_index_delta = 1
+        previous_event_index_delta = i + 1
         while not non_concurrent_previous_event_found:
-            previous_event_index = index - previous_event_index_delta
-            if previous_event_index < 0:
+            if previous_event_index_delta > len(reversed_index) - 1:
                 break
+
+            previous_event_index = reversed_index[previous_event_index_delta]
 
             previous_event_activity = case.loc[previous_event_index, log_ids.activity]
             if previous_event_activity in parallel_activities_for_current_event:
@@ -195,6 +203,22 @@ def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
     return handoff_with_frequency
 
 
+def __mark_handoffs_only(
+        case: pd.DataFrame,
+        log_ids: Optional[EventLogIDs] = None):
+    log_ids = log_ids_non_nil(log_ids)
+
+    case.sort_values(by=[log_ids.end_time], inplace=True)
+
+    for (_, group) in case.groupby(by=[TRANSITION_COLUMN_KEY]):
+        if len(group) <= 1:
+            continue
+
+        min_index = group[log_ids.start_time].idxmin()
+        other_indices = group.index.difference([min_index])
+        case.loc[other_indices, TRANSITION_COLUMN_KEY] = np.NAN
+
+
 def __analyze_transitions(
         case: pd.DataFrame,
         log_calendar: dict,
@@ -238,6 +262,14 @@ def __analyze_transitions(
         wt_prioritization = wt_analysis.prioritization
         wt_unavailability = wt_analysis.unavailability
         wt_extraneous = wt_analysis.extraneous
+
+        # if wt_total > pd.Timedelta(0):
+        #     print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
+        #     print(f'wt_batching_interval: {wt_batching_interval}')
+        #     print(f'wt_contention_intervals: {wt_contention_intervals}')
+        #     print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
+        #     print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
+        #     print(f'wt_extraneous: {wt_extraneous}')
 
         # handoff type identification
         handoff_type = 'transition'
