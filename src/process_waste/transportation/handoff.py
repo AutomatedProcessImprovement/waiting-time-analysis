@@ -44,19 +44,12 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     log_ids = log_ids_non_nil(kwargs.get('log_ids'))
 
     case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
-    # case.reset_index(inplace=True, drop=True)
 
     # converting timestamps to datetime
     log = convert_timestamp_columns_to_datetime(log, log_ids)
     case = convert_timestamp_columns_to_datetime(case, log_ids)
 
-    # __mark_strict_handoffs(case, parallel_activities, log_ids=log_ids)
-    # __mark_self_handoffs(case, parallel_activities, log_ids=log_ids)
     __mark_activity_transitions(case, parallel_activities, log_ids=log_ids)
-    # potential_handoffs = case[~case['handoff_type'].isna()]
-
-    # handoffs_index = potential_handoffs.index
-    # handoffs = __make_report(case, handoffs_index, log_calendar, log, log_ids=log_ids)
 
     __mark_handoffs_only(case, log_ids=log_ids)
 
@@ -113,68 +106,6 @@ def __mark_activity_transitions(
             else:
                 case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
                 non_concurrent_previous_event_found = True
-
-
-def __mark_strict_handoffs(
-        case: pd.DataFrame,
-        parallel_activities: Optional[Dict[str, set]] = None,
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    log_ids = log_ids_non_nil(log_ids)
-
-    # TODO: should ENABLED_TIMESTAMP_KEY be used?
-
-    # checking the main conditions for handoff to occur
-    next_events = case.shift(-1)
-    resource_changed = case[log_ids.resource] != next_events[log_ids.resource]
-    activity_changed = case[log_ids.activity] != next_events[log_ids.activity]
-    consecutive_timestamps = case[log_ids.end_time] <= next_events[log_ids.start_time]
-    not_parallel = pd.Series(index=case.index, dtype=bool)
-    prev_activities = case[log_ids.activity]
-    next_activities = next_events[log_ids.activity]
-    for (i, pair) in enumerate(zip(prev_activities, next_activities)):
-        if pair[0] == pair[1]:
-            not_parallel.iat[i] = False
-            continue
-        parallel_set = parallel_activities.get(pair[1], None) if parallel_activities else None
-        if parallel_set and pair[0] in parallel_set:
-            not_parallel.iat[i] = False
-        else:
-            not_parallel.iat[i] = True
-    not_parallel = pd.Series(not_parallel)
-    handoff_occurred = resource_changed & activity_changed & consecutive_timestamps & not_parallel
-    case.at[handoff_occurred, 'handoff_type'] = 'strict'
-    return case
-
-
-def __mark_self_handoffs(
-        case: pd.DataFrame,
-        parallel_activities: Optional[Dict[str, set]] = None,
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    log_ids = log_ids_non_nil(log_ids)
-
-    # TODO: should ENABLED_TIMESTAMP_KEY be used?
-
-    # checking the main conditions for handoff to occur
-    next_events = case.shift(-1)
-    same_resource = case[log_ids.resource] == next_events[log_ids.resource]
-    activity_changed = case[log_ids.activity] != next_events[log_ids.activity]
-    consecutive_timestamps = case[log_ids.end_time] <= next_events[log_ids.start_time]
-    not_parallel = pd.Series(index=case.index, dtype=bool)
-    prev_activities = case[log_ids.activity]
-    next_activities = next_events[log_ids.activity]
-    for (i, pair) in enumerate(zip(prev_activities, next_activities)):
-        if pair[0] == pair[1]:
-            not_parallel.iat[i] = False
-            continue
-        parallel_set = parallel_activities.get(pair[1], None) if parallel_activities else None
-        if parallel_set and pair[0] in parallel_set:
-            not_parallel.iat[i] = False
-        else:
-            not_parallel.iat[i] = True
-    not_parallel = pd.Series(not_parallel)
-    handoff_occurred = same_resource & activity_changed & consecutive_timestamps & not_parallel
-    case.loc[case[handoff_occurred].index, 'handoff_type'] = 'self'
-    return case
 
 
 def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
@@ -273,84 +204,6 @@ def __analyze_transitions(
 
         # handoff type identification
         handoff_type = 'transition'
-
-        # appending the handoff data
-        handoff = pd.DataFrame({
-            'source_activity': [source[log_ids.activity]],
-            'source_resource': [source[log_ids.resource]],
-            'destination_activity': [destination[log_ids.activity]],
-            'destination_resource': [destination[log_ids.resource]],
-            'handoff_type': [handoff_type],
-            WAITING_TIME_TOTAL_KEY: [wt_total],
-            WAITING_TIME_BATCHING_KEY: [wt_batching],
-            WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
-            WAITING_TIME_CONTENTION_KEY: [wt_contention],
-            WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
-            WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
-        })
-        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
-
-    # filling in N/A with some values
-    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
-    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
-    return handoffs
-
-
-def __make_report(
-        case: pd.DataFrame,
-        handoffs_index: pd.Index,
-        log_calendar: dict,
-        log: Optional[pd.DataFrame] = None,
-        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
-    log_ids = log_ids_non_nil(log_ids)
-
-    # preparing a different dataframe for handoff reporting
-    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
-               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
-    handoffs = pd.DataFrame(columns=columns)
-
-    # setting NaT to zero duration
-    if WAITING_TIME_CONTENTION_KEY in case.columns:
-        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
-
-    for loc in handoffs_index:
-        source = case.loc[loc]
-        destination = case.loc[loc + 1]
-        destination_index = pd.Index([loc + 1])
-
-        # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
-
-        wt_total = destination[WAITING_TIME_TOTAL_KEY]
-        wt_batching_interval = __wt_batching_interval(destination, log_ids)
-        wt_contention_intervals, wt_prioritization_intervals = \
-            __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
-        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
-
-        wt_analysis = __wt_durations_from_wt_intervals(
-            wt_batching_interval,
-            wt_contention_intervals,
-            wt_prioritization_intervals,
-            wt_unavailability_intervals, wt_total)
-
-        wt_batching = wt_analysis.batching
-        wt_contention = wt_analysis.contention
-        wt_prioritization = wt_analysis.prioritization
-        wt_unavailability = wt_analysis.unavailability
-        wt_extraneous = wt_analysis.extraneous
-
-        # if wt_total > pd.Timedelta(0):
-        #     print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
-        #     print(f'wt_batching_interval: {wt_batching_interval}')
-        #     print(f'wt_contention_intervals: {wt_contention_intervals}')
-        #     print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
-        #     print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
-        #     print(f'wt_extraneous: {wt_extraneous}')
-
-        # handoff type identification
-        if source[log_ids.resource] == destination[log_ids.resource]:
-            handoff_type = 'self'
-        else:
-            handoff_type = 'strict'
 
         # appending the handoff data
         handoff = pd.DataFrame({

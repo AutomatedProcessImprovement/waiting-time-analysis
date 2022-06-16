@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, \
-    ResourceAvailabilityType, \
-    HeuristicsThresholds
+    ResourceAvailabilityType, HeuristicsThresholds
 from batch_processing_analysis.config import EventLogIDs
 from tqdm import tqdm
 
