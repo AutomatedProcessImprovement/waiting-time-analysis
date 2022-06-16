@@ -36,6 +36,12 @@ def identify(
     # NOTE: Batching analysis package adds enabled_timestamp column to the log
     # core.add_enabled_timestamp(log)
 
+    # discarding unnecessary columns
+    log = log[[log_ids.case, log_ids.activity, log_ids.resource, log_ids.start_time, log_ids.end_time]]
+
+    # NB: sorting by end time is important for concurrency oracle that is run during batching analysis
+    log.sort_values(by=[log_ids.end_time, log_ids.start_time, log_ids.activity], inplace=True)
+
     # taking batch creation time from the batch analysis
     log = batching.add_columns_from_batch_analysis(
         log,

@@ -9,9 +9,11 @@ from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KE
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
     convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries
 from process_waste.calendar.intervals import Interval, pd_interval_to_interval, subtract_intervals, \
-    pd_intervals_to_intervals, overall_duration
+    pd_intervals_to_intervals, overall_duration, remove_overlapping_time_from_intervals
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
+
+TRANSITION_COLUMN_KEY = 'transition_source'
 
 
 @print_section_boundaries('Hand-off analysis')
@@ -41,18 +43,20 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     log_ids = log_ids_non_nil(kwargs.get('log_ids'))
 
     case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
-    case.reset_index()
+    case.reset_index(inplace=True, drop=True)
 
     # converting timestamps to datetime
     log = convert_timestamp_columns_to_datetime(log, log_ids)
     case = convert_timestamp_columns_to_datetime(case, log_ids)
 
-    __mark_strict_handoffs(case, parallel_activities, log_ids=log_ids)
-    __mark_self_handoffs(case, parallel_activities, log_ids=log_ids)
+    # __mark_strict_handoffs(case, parallel_activities, log_ids=log_ids)
+    # __mark_self_handoffs(case, parallel_activities, log_ids=log_ids)
+    __mark_activity_transitions(case, parallel_activities, log_ids=log_ids)
     potential_handoffs = case[~case['handoff_type'].isna()]
 
-    handoffs_index = potential_handoffs.index
-    handoffs = __make_report(case, handoffs_index, log_calendar, log, log_ids=log_ids)
+    # handoffs_index = potential_handoffs.index
+    # handoffs = __make_report(case, handoffs_index, log_calendar, log, log_ids=log_ids)
+    handoffs = __analyze_transitions(case, log_calendar, log, log_ids=log_ids)
 
     handoffs_with_frequency = __calculate_frequency_and_duration(handoffs)
 
@@ -68,6 +72,39 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
     handoffs_with_frequency['case_id'] = case_id
 
     return handoffs_with_frequency
+
+
+def __mark_activity_transitions(
+        case: pd.DataFrame,
+        parallel_activities: Optional[Dict[str, set]] = None,
+        log_ids: Optional[EventLogIDs] = None):
+    log_ids = log_ids_non_nil(log_ids)
+
+    # NOTE: we assume (a) the case was sorted by end time and (b) index has sequential integer values (it was reset)
+
+    if not parallel_activities:
+        parallel_activities = {}
+
+    # processing the case backwards
+    reversed_index = reversed(case.index)
+    for index in reversed_index:
+        non_concurrent_previous_event_found = False
+
+        activity = case.loc[index, log_ids.activity]
+        parallel_activities_for_current_event = parallel_activities.get(activity, [])
+
+        previous_event_index_delta = 1
+        while not non_concurrent_previous_event_found:
+            previous_event_index = index - previous_event_index_delta
+            if previous_event_index < 0:
+                break
+
+            previous_event_activity = case.loc[previous_event_index, log_ids.activity]
+            if previous_event_activity in parallel_activities_for_current_event:
+                previous_event_index_delta += 1
+            else:
+                case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
+                non_concurrent_previous_event_found = True
 
 
 def __mark_strict_handoffs(
@@ -158,6 +195,75 @@ def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
     return handoff_with_frequency
 
 
+def __analyze_transitions(
+        case: pd.DataFrame,
+        log_calendar: dict,
+        log: Optional[pd.DataFrame] = None,
+        log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    log_ids = log_ids_non_nil(log_ids)
+
+    # preparing a different dataframe for handoff reporting
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
+               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
+    handoffs = pd.DataFrame(columns=columns)
+
+    handoffs_index = case[~case[TRANSITION_COLUMN_KEY].isna()].index
+
+    # setting NaT to zero duration
+    if WAITING_TIME_CONTENTION_KEY in case.columns:
+        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
+
+    for loc in handoffs_index:
+        destination = case.loc[loc]
+        destination_index = pd.Index([loc])
+        source_index = int(destination[TRANSITION_COLUMN_KEY])
+        source = case.loc[source_index]
+
+        # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
+
+        wt_total = destination[WAITING_TIME_TOTAL_KEY]
+        wt_batching_interval = __wt_batching_interval(destination, log_ids)
+        wt_contention_intervals, wt_prioritization_intervals = \
+            __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
+        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
+
+        wt_analysis = __wt_durations_from_wt_intervals(
+            wt_batching_interval,
+            wt_contention_intervals,
+            wt_prioritization_intervals,
+            wt_unavailability_intervals, wt_total)
+
+        wt_batching = wt_analysis.batching
+        wt_contention = wt_analysis.contention
+        wt_prioritization = wt_analysis.prioritization
+        wt_unavailability = wt_analysis.unavailability
+        wt_extraneous = wt_analysis.extraneous
+
+        # handoff type identification
+        handoff_type = 'transition'
+
+        # appending the handoff data
+        handoff = pd.DataFrame({
+            'source_activity': [source[log_ids.activity]],
+            'source_resource': [source[log_ids.resource]],
+            'destination_activity': [destination[log_ids.activity]],
+            'destination_resource': [destination[log_ids.resource]],
+            'handoff_type': [handoff_type],
+            WAITING_TIME_TOTAL_KEY: [wt_total],
+            WAITING_TIME_BATCHING_KEY: [wt_batching],
+            WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
+            WAITING_TIME_CONTENTION_KEY: [wt_contention],
+            WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
+            WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
+        })
+        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
+
+    # filling in N/A with some values
+    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
+    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
+    return handoffs
+
+
 def __make_report(
         case: pd.DataFrame,
         handoffs_index: pd.Index,
@@ -199,6 +305,14 @@ def __make_report(
         wt_prioritization = wt_analysis.prioritization
         wt_unavailability = wt_analysis.unavailability
         wt_extraneous = wt_analysis.extraneous
+
+        # if wt_total > pd.Timedelta(0):
+        #     print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
+        #     print(f'wt_batching_interval: {wt_batching_interval}')
+        #     print(f'wt_contention_intervals: {wt_contention_intervals}')
+        #     print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
+        #     print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
+        #     print(f'wt_extraneous: {wt_extraneous}')
 
         # handoff type identification
         if source[log_ids.resource] == destination[log_ids.resource]:
@@ -299,9 +413,14 @@ def __wt_durations_from_wt_intervals(
 
     def make_intervals(_intervals: Tuple[List, list]) -> List[pd.Interval]:
         _intervals = list(zip(_intervals[0], _intervals[1]))
+
         _intervals = [
             pd.Interval(pd.to_datetime(start, utc=True), pd.to_datetime(end, utc=True))
-            for start, end in _intervals]
+            for start, end in _intervals
+        ]
+
+        _intervals = __remove_overlapping_time_from_intervals(_intervals)
+
         return _intervals
 
     if not wt_batching_interval and not wt_contention_intervals and not wt_prioritization_intervals and not wt_unavailability_intervals:
@@ -320,13 +439,12 @@ def __wt_durations_from_wt_intervals(
     # contention calculation
 
     if wt_contention_intervals:
-        wt_contention_start = pd.to_datetime(wt_contention_intervals[0], utc=True)
-        wt_contention_end = pd.to_datetime(wt_contention_intervals[1], utc=True)
+        wt_contention_pd_intervals = make_intervals(wt_contention_intervals)
+
         if wt_batching == pd.Timedelta(0):
-            wt_contention = (wt_contention_end - wt_contention_start).sum()
+            wt_contention = __duration_of_pd_intervals(wt_contention_pd_intervals)
         else:
             wt_batching_pd_interval = pd.Interval(wt_batching_interval[0], wt_batching_interval[1])
-            wt_contention_pd_intervals = make_intervals(wt_contention_intervals)
             wt_contention_pd_intervals = \
                 __subtract_a_from_intervals_b(wt_batching_pd_interval, wt_contention_pd_intervals)
 
@@ -344,13 +462,16 @@ def __wt_durations_from_wt_intervals(
 
         if wt_contention_pd_intervals:
             wt_prioritization_pd_intervals = \
-                __subtract_intervals_a_from_intervals_b(wt_contention_pd_intervals, wt_prioritization_pd_intervals)
+                __subtract_intervals_a_from_intervals_b(wt_contention_pd_intervals,
+                                                        wt_prioritization_pd_intervals)
 
         wt_prioritization = __duration_of_pd_intervals(wt_prioritization_pd_intervals)
 
     # unavailability calculation
 
     if wt_unavailability_intervals:
+        wt_unavailability_intervals = remove_overlapping_time_from_intervals(wt_unavailability_intervals)
+
         if wt_batching > pd.Timedelta(0):
             wt_batching_custom_interval = pd_interval_to_interval(
                 pd.Interval(wt_batching_interval[0], wt_batching_interval[1]))
@@ -443,6 +564,22 @@ def __subtract_intervals_a_from_intervals_b(a: List[pd.Interval], b: List[pd.Int
         return result
 
     return __subtract_intervals_a_from_intervals_b(a[1:], result)
+
+
+def __remove_overlapping_time_from_intervals(a: List[pd.Interval]) -> List[pd.Interval]:
+    """Removes overlapping time from intervals."""
+
+    if len(a) == 0:
+        return []
+
+    if len(a) == 1:
+        return a
+
+    a = sorted(a, key=lambda x: x.left)
+
+    result = __subtract_a_from_intervals_b(a[0], a[1:])
+
+    return [a[0]] + __remove_overlapping_time_from_intervals(result)
 
 
 def __duration_of_pd_intervals(intervals: List[pd.Interval]) -> pd.Timedelta:

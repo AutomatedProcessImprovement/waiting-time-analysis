@@ -3,7 +3,8 @@ from typing import List
 import pandas as pd
 import pytest
 
-from process_waste.calendar.intervals import Interval, WeekDay, subtract_intervals, pd_interval_to_interval
+from process_waste.calendar.intervals import Interval, WeekDay, subtract_intervals, pd_interval_to_interval, \
+    remove_overlapping_time_from_intervals
 
 
 class TestIntervals:
@@ -123,3 +124,54 @@ class TestIntervals:
     def test_pd_interval_to_interval(self, interval: pd.Interval, expected: List[Interval]):
         result = pd_interval_to_interval(interval)
         assert result == expected
+
+
+overlapping_intervals_test_cases = [
+    {
+        'test_case_name': 'overlapping intervals',
+        'input': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:30:00', right_time='01:30:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='01:00:00', right_time='02:00:00'),
+        ],
+        'output': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='01:00:00', right_time='01:30:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='01:30:00', right_time='02:00:00'),
+        ]
+    },
+    {
+        'test_case_name': 'non-overlapping intervals',
+        'input': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='01:00:00', right_time='02:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='02:30:00', right_time='03:00:00'),
+        ],
+        'output': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='01:00:00', right_time='02:00:00'),
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='02:30:00', right_time='03:00:00'),
+        ]
+    },
+    {
+        'test_case_name': 'empty list',
+        'input': [],
+        'output': []
+    },
+    {
+        'test_case_name': 'single item',
+        'input': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+        ],
+        'output': [
+            Interval(left_day=WeekDay.MONDAY, right_day=WeekDay.MONDAY, left_time='00:00:00', right_time='01:00:00'),
+        ]
+    },
+]
+
+
+@pytest.mark.parametrize('test_data', overlapping_intervals_test_cases,
+                         ids=map(lambda x: x['test_case_name'], overlapping_intervals_test_cases))
+def test__remove_overlapping_time_from_intervals(test_data):
+    result = remove_overlapping_time_from_intervals(test_data['input'])
+    assert result == test_data['output']

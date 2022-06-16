@@ -234,11 +234,11 @@ def intersect_intervals(intervals1: [Interval], intervals2: [Interval]) -> [Inte
 
 
 def subtract_intervals(intervals1: [Interval], intervals2: [Interval]) -> [Interval]:
-    """
-    Recursively computes the difference between two sets of intervals.
-    """
+    """Subtracts intervals2 from intervals1."""
+
     if len(intervals1) == 0:
         return []
+
     if len(intervals2) == 0:
         return intervals1
 
@@ -251,4 +251,21 @@ def subtract_intervals(intervals1: [Interval], intervals2: [Interval]) -> [Inter
         return result
 
     result = subtract_intervals(result, intervals2[1:])
+
     return result
+
+
+def remove_overlapping_time_from_intervals(a: List[Interval]) -> List[Interval]:
+    """Removes overlapping time from intervals."""
+
+    if len(a) == 0:
+        return []
+
+    if len(a) == 1:
+        return a
+
+    a = sorted(a, key=lambda x: x.to_pd_interval().left)
+
+    result = subtract_intervals(a[1:], [a[0]])
+
+    return [a[0]] + remove_overlapping_time_from_intervals(result)
