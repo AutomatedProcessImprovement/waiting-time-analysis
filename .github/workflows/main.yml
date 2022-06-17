@@ -107,7 +107,7 @@ jobs:
           tags: ${{ env.DOCKERHUB_REPO }}:latest
           file: process-waste_ci.dockerfile
           context: .
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
 
   test:
     runs-on: ubuntu-latest
