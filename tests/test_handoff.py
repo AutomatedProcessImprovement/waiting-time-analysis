@@ -1,18 +1,7 @@
 import pandas as pd
 import pytest
 
-from process_waste import handoff
-from process_waste.core import core
 from process_waste.transportation.handoff import __remove_overlapping_time_from_intervals
-
-
-@pytest.mark.integration
-@pytest.mark.log_path('PurchasingExample.csv')
-def test_negative_duration(event_log, config):
-    parallel_activities = core.parallel_activities_with_heuristic_oracle(event_log)
-    result = handoff.identify(event_log, parallel_activities, parallel_run=True)
-    assert sum(result['wt_total_seconds'] < 0) == 0
-
 
 # Pandas intervals
 
