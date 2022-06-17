@@ -52,16 +52,16 @@ manual_log_calendar = {
 icpm_data = [
     # Automated testing
 
-    {'log_name': 'handoff-test.csv', 'parallel_run': False, 'batch_size': 10, 'expected': 'handoff-test_expected.csv'},
-    {'log_name': 'manual_log_1.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+    {'log_name': 'handoff-test.csv', 'parallel_run': True, 'batch_size': 10, 'expected': 'handoff-test_expected.csv'},
+    {'log_name': 'manual_log_1.csv', 'parallel_run': True, 'batch_size': 2, 'calendar': manual_log_calendar,
      'expected': 'manual_log_1_expected.csv'},
-    {'log_name': 'manual_log_2.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+    {'log_name': 'manual_log_2.csv', 'parallel_run': True, 'batch_size': 2, 'calendar': manual_log_calendar,
      'expected': 'manual_log_2_expected.csv'},
-    {'log_name': 'manual_log_3.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+    {'log_name': 'manual_log_3.csv', 'parallel_run': True, 'batch_size': 2, 'calendar': manual_log_calendar,
      'expected': 'manual_log_3_expected.csv'},
-    {'log_name': 'manual_log_4.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+    {'log_name': 'manual_log_4.csv', 'parallel_run': True, 'batch_size': 2, 'calendar': manual_log_calendar,
      'expected': 'manual_log_4_expected.csv'},
-    {'log_name': 'manual_log_5.csv', 'parallel_run': False, 'batch_size': 2, 'calendar': manual_log_calendar,
+    {'log_name': 'manual_log_5.csv', 'parallel_run': True, 'batch_size': 2, 'calendar': manual_log_calendar,
      'expected': 'manual_log_5_expected.csv'},
 
     # Manual testing
