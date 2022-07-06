@@ -187,7 +187,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
     extension_suffix = '.csv'
 
     # test case expected values if available
-    expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if test_data['expected'] else None
+    expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if 'expected' in test_data else None
     expected_data = core.read_csv(expected_path) if expected_path else None
 
     # assert
