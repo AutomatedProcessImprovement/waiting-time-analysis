@@ -4,15 +4,14 @@ from typing import Dict, Optional, Tuple, List
 import click
 import numpy as np
 import pandas as pd
-
-from batch_processing_analysis.config import EventLogIDs
 from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
     convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries
-from process_waste.calendar.intervals import Interval, pd_interval_to_interval, subtract_intervals, \
-    pd_intervals_to_intervals, overall_duration, remove_overlapping_time_from_intervals
+from process_waste.calendar.intervals import Interval
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
+
+from batch_processing_analysis.config import EventLogIDs
 
 TRANSITION_COLUMN_KEY = 'transition_source_index'
 
@@ -51,7 +50,7 @@ def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -
 
     __mark_activity_transitions(case, parallel_activities, log_ids=log_ids)
 
-    __mark_handoffs_only(case, log_ids=log_ids)
+    # __mark_handoffs_only(case, log_ids=log_ids)
 
     handoffs = __analyze_transitions(case, log_calendar, log, log_ids=log_ids)
 
@@ -90,8 +89,8 @@ def __mark_activity_transitions(
         non_concurrent_previous_event_found = False
 
         index = reversed_index[i]
-        activity = case.loc[index, log_ids.activity]
-        parallel_activities_for_current_event = parallel_activities.get(activity, [])
+        current_event = case.loc[index]
+        parallel_activities_for_current_event = parallel_activities.get(current_event[log_ids.activity], [])
 
         previous_event_index_delta = i + 1
         while not non_concurrent_previous_event_found:
@@ -99,11 +98,14 @@ def __mark_activity_transitions(
                 break
 
             previous_event_index = reversed_index[previous_event_index_delta]
-
-            previous_event_activity = case.loc[previous_event_index, log_ids.activity]
-            if previous_event_activity in parallel_activities_for_current_event:
+            previous_event = case.loc[previous_event_index]
+            # Check if they are overlapping
+            overlapping_activity_instances = previous_event[log_ids.end_time] > current_event[log_ids.start_time]
+            if previous_event[log_ids.activity] in parallel_activities_for_current_event or overlapping_activity_instances:
+                # If they are concurrent activities, or overlapping instances, jump to the previous event
                 previous_event_index_delta += 1
             else:
+                # If they are not concurrent nor overlapping, transition!
                 case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
                 non_concurrent_previous_event_found = True
 
@@ -177,22 +179,31 @@ def __analyze_transitions(
         # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
 
         wt_total = destination[WAITING_TIME_TOTAL_KEY]
-        wt_batching_interval = __wt_batching_interval(destination, log_ids)
-        wt_contention_intervals, wt_prioritization_intervals = \
-            __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
-        wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
+        if wt_total > pd.Timedelta(0):
+            # Perform analysis
+            wt_batching_interval = __wt_batching_interval(destination, log_ids)
+            wt_contention_intervals, wt_prioritization_intervals = \
+                __wt_contention_and_prioritization_intervals(destination_index, log, log_ids)
+            wt_unavailability_intervals = __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
 
-        wt_analysis = __wt_durations_from_wt_intervals(
-            wt_batching_interval,
-            wt_contention_intervals,
-            wt_prioritization_intervals,
-            wt_unavailability_intervals, wt_total)
+            wt_analysis = __wt_durations_from_wt_intervals(
+                wt_batching_interval,
+                wt_contention_intervals,
+                wt_prioritization_intervals,
+                wt_unavailability_intervals, wt_total)
 
-        wt_batching = wt_analysis.batching
-        wt_contention = wt_analysis.contention
-        wt_prioritization = wt_analysis.prioritization
-        wt_unavailability = wt_analysis.unavailability
-        wt_extraneous = wt_analysis.extraneous
+            wt_batching = wt_analysis.batching
+            wt_contention = wt_analysis.contention
+            wt_prioritization = wt_analysis.prioritization
+            wt_unavailability = wt_analysis.unavailability
+            wt_extraneous = wt_analysis.extraneous
+        else:
+            # There is no WT, so don't run analysis
+            wt_batching = pd.Timedelta(0)
+            wt_contention = pd.Timedelta(0)
+            wt_prioritization = pd.Timedelta(0)
+            wt_unavailability = pd.Timedelta(0)
+            wt_extraneous = pd.Timedelta(0)
 
         # if wt_total > pd.Timedelta(0):
         #     print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
@@ -234,13 +245,7 @@ def __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids)
 
     wt_unavailability_intervals = detect_unavailability_intervals(destination_index, log, log_calendar, log_ids=log_ids)
 
-    def is_empty(interval: Interval) -> bool:
-        if interval.left_time == interval.right_time:
-            if interval.left_day == interval.right_day:
-                return True
-        return False
-
-    intervals = list(filter(lambda interval: not is_empty(interval), wt_unavailability_intervals))
+    intervals = list(filter(lambda interval: interval.length > pd.Timedelta(0), wt_unavailability_intervals))
     return None if len(intervals) == 0 else intervals
 
 
@@ -355,25 +360,22 @@ def __wt_durations_from_wt_intervals(
     # unavailability calculation
 
     if wt_unavailability_intervals:
-        wt_unavailability_intervals = remove_overlapping_time_from_intervals(wt_unavailability_intervals)
-
         if wt_batching > pd.Timedelta(0):
-            wt_batching_custom_interval = pd_interval_to_interval(
-                pd.Interval(wt_batching_interval[0], wt_batching_interval[1]))
-
-            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals, wt_batching_custom_interval)
+            wt_batching_pd_interval = pd.Interval(wt_batching_interval[0], wt_batching_interval[1])
+            wt_unavailability_intervals = \
+                __subtract_a_from_intervals_b(wt_batching_pd_interval, wt_unavailability_intervals)
 
         if wt_contention_pd_intervals:
-            wt_contention_custom_intervals = pd_intervals_to_intervals(wt_contention_pd_intervals)
-            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals,
-                                                             wt_contention_custom_intervals)
+            wt_unavailability_intervals = __subtract_intervals_a_from_intervals_b(
+                wt_contention_pd_intervals, wt_unavailability_intervals
+            )
 
         if wt_prioritization_pd_intervals:
-            wt_prioritization_custom_intervals = pd_intervals_to_intervals(wt_prioritization_pd_intervals)
-            wt_unavailability_intervals = subtract_intervals(wt_unavailability_intervals,
-                                                             wt_prioritization_custom_intervals)
+            wt_unavailability_intervals = __subtract_intervals_a_from_intervals_b(
+                wt_prioritization_pd_intervals, wt_unavailability_intervals
+            )
 
-        wt_unavailability = overall_duration(wt_unavailability_intervals)
+        wt_unavailability = __duration_of_pd_intervals(wt_unavailability_intervals)
 
     # extraneous calculation
 

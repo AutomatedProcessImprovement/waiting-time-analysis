@@ -1,13 +1,13 @@
+import datetime
 from typing import List, Optional
 
 import pandas as pd
-
-from batch_processing_analysis.config import EventLogIDs
 from process_waste import log_ids_non_nil
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
-from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals, \
-    intersect_intervals
+from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals
+
+from batch_processing_analysis.config import EventLogIDs
 
 
 def other_processing_events_during_waiting_time_of_event(
@@ -110,17 +110,46 @@ def detect_unavailability_intervals(
     start_time = __ensure_timestamp_tz(start_time, enabled_time.tz)
     enabled_time = __ensure_timestamp_tz(enabled_time, start_time.tz)
 
-    overall_work_intervals = calendar.resource_working_hours_as_intervals(resource, log_calendar)
+    non_working_intervals = []
+    if enabled_time < start_time:
+        overall_work_intervals = calendar.resource_working_hours_as_intervals(resource, log_calendar)
+        current_instant = enabled_time
+        while current_instant < start_time:
+            next_instant = None
+            daily_working_intervals = [
+                interval
+                for interval in overall_work_intervals
+                if current_instant.weekday() == interval.left_day.value
+            ]
+            if len(daily_working_intervals) > 0:
+                # Search for an interval containing the current instant
+                for working_interval in daily_working_intervals:
+                    start = working_interval.left_time_to_time()
+                    end = working_interval.right_time_to_time()
+                    if start <= current_instant.time() < end:
+                        next_instant = pd.Timestamp.combine(current_instant.date(), end).tz_localize(current_instant.tz)
+                # If not contained in an interval
+                if next_instant is None:
+                    # Get intervals' start happening after it
+                    starts_after = [
+                        working_interval.left_time_to_time()
+                        for working_interval in daily_working_intervals
+                        if working_interval.left_time_to_time() > current_instant.time()
+                    ]
+                    if len(starts_after) > 0:
+                        next_instant = pd.Timestamp.combine(current_instant.date(), min(starts_after)).tz_localize(current_instant.tz)
+                        non_working_intervals += [pd.Interval(current_instant, min(next_instant, start_time))]
+            if next_instant is None:
+                # Non working periods on this week day, or no working periods happening after current instant,
+                # thus, add non-working interval until end of day
+                next_instant = pd.Timestamp.combine(
+                    current_instant.date() + pd.Timedelta(days=1),
+                    datetime.time.fromisoformat("00:00:00.000000")
+                ).tz_localize(current_instant.tz)
+                non_working_intervals += [pd.Interval(current_instant, min(next_instant, start_time))]
+            current_instant = next_instant
 
-    wt_intervals = pd_interval_to_interval(pd.Interval(enabled_time, start_time))
-
-    working_hours_during_wt = intersect_intervals(wt_intervals, overall_work_intervals)
-
-    idle_intervals = non_processing_intervals(event_index, log, log_ids=log_ids)
-
-    unavailability_intervals = subtract_intervals(idle_intervals, working_hours_during_wt)
-
-    return unavailability_intervals
+    return non_working_intervals
 
 
 def __ensure_timestamp_tz(timestamp: pd.Timestamp, tz: Optional[str] = None):

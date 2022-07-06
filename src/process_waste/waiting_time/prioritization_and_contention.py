@@ -2,10 +2,10 @@ from typing import Optional, Tuple, List
 
 import numpy as np
 import pandas as pd
-
-from batch_processing_analysis.config import EventLogIDs
 from process_waste import log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY
 from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
+
+from batch_processing_analysis.config import EventLogIDs
 
 
 def detect_contention_and_prioritization_intervals(
@@ -81,7 +81,9 @@ def detect_contention_and_prioritization_intervals(
     wt_contention_intervals_in_batch, wt_prioritization_intervals_in_batch = __detect_intervals(
         other_processing_events_in_batch, actual_event_enabled_time)
 
-    actual_event_enabled_time = event[BATCH_INSTANCE_ENABLED_KEY].values
+    actual_event_enabled_time = min(event[BATCH_INSTANCE_ENABLED_KEY].values, event[log_ids.start_time].values)
+    # There is a case where the batch instance enabled key can be after the activity instance start (if the batch is composed by
+    # many activity instances of the same case. To avoid miscalculations, take the min of both
     if pd.isna(actual_event_enabled_time).all():
         actual_event_enabled_time = event[log_ids.enabled_time].values
     wt_contention_intervals_out_batch, wt_prioritization_intervals_out_batch = __detect_intervals(
