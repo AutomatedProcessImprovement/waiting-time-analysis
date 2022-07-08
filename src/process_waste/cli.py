@@ -5,20 +5,14 @@ import click
 from .transportation import identify
 
 
-@click.group()
-def main():
-    """Grouping commands under main group."""
-    pass
-
-
-@main.command()
+@click.command()
 @click.option('-l', '--log_path', default=None, required=True, type=Path,
               help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
 @click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
               help='Run the tool using all available cores in parallel.')
-def transportation(log_path: Path, output_dir: Path, parallel: bool):
+def main(log_path: Path, output_dir: Path, parallel: bool):
     result = identify(log_path, parallel)
 
     output_dir.mkdir(parents=True, exist_ok=True)
