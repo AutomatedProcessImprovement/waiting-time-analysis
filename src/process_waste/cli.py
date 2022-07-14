@@ -1,7 +1,9 @@
 from pathlib import Path
 
 import click
+import pandas as pd
 
+from process_waste import CTEImpactAnalysis
 from .transportation import identify
 
 
@@ -18,23 +20,27 @@ def main(log_path: Path, output_dir: Path, parallel: bool):
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
 
-    # handoff
-    if result['handoff'] is not None:
+    handoff_report: pd.DataFrame = result.get('handoff')
+    process_cte_impact: CTEImpactAnalysis = result.get('process_cte_impact')
+
+    if handoff_report is not None:
         handoff_output_path = output_dir / (log_path.stem + '_handoff')
+
         handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
         print(f'Saving handoff report to {handoff_csv_path}')
-        result['handoff'].to_csv(handoff_csv_path, index=False)
+        handoff_report.to_csv(handoff_csv_path, index=False)
+
+        handoff_json_path = handoff_output_path.with_suffix('.json')
+        print(f'Saving handoff report to {handoff_json_path}')
+        handoff_report.to_json(handoff_json_path, orient='records')
     else:
         print('No handoffs found')
 
-    # pingpong
-    if result['pingpong'] is not None:
-        pingpong_output_path = output_dir / (log_path.stem + '_pingpong')
-        pingpong_csv_path = pingpong_output_path.with_suffix(extension_suffix)
-        print(f'Saving pingpong report to {pingpong_csv_path}')
-        result['pingpong'].to_csv(pingpong_csv_path, index=False)
-    else:
-        print('No pingpongs found')
+    if process_cte_impact:
+        process_cte_impact_output_path = output_dir / (log_path.stem + '_process_cte_impact')
+        process_cte_impact_json_path = process_cte_impact_output_path.with_suffix('.json')
+        print(f'Saving process CTE impact report to {process_cte_impact_json_path}')
+        process_cte_impact.to_json(process_cte_impact_json_path)
 
 
 if __name__ == '__main__':

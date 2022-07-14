@@ -26,6 +26,7 @@ WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 BATCH_INSTANCE_ENABLED_KEY = 'batch_instance_enabled'
 BATCH_INSTANCE_ID_KEY = 'batch_instance_id'
+CTE_IMPACT_KEY = 'cte_impact'
 
 GRANULARITY_MINUTES = 15
 
