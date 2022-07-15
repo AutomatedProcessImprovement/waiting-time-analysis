@@ -1,12 +1,8 @@
-import concurrent.futures
-import multiprocessing
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 
 import click
-import numpy as np
 import pandas as pd
-from tqdm import tqdm
 
 from batch_processing_analysis.config import EventLogIDs
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
@@ -99,68 +95,6 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     if df2_col_name is None:
         df2_col_name = df1_col_name
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
-
-
-def identify_main(
-        log: pd.DataFrame,
-        parallel_activities: Dict[str, set],
-        identify_fn_per_case,
-        join_fn,
-        parallel_run=True,
-        log_ids: Optional[EventLogIDs] = None,
-        calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
-    from process_waste.calendar.calendar import make as make_calendar
-
-    log_ids = log_ids_non_nil(log_ids)
-
-    if not calendar:
-        log_calendar = make_calendar(log, granularity=GRANULARITY_MINUTES, log_ids=log_ids)
-    else:
-        log_calendar = calendar
-
-    log_grouped = log.groupby(by=log_ids.case)
-    all_items = []
-    if parallel_run:
-        n_cores = multiprocessing.cpu_count() - 1
-        handles = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-            for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
-                case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
-                handle = executor.submit(identify_fn_per_case,
-                                         case,
-                                         parallel_activities=parallel_activities,
-                                         case_id=case_id,
-                                         log_calendar=log_calendar,
-                                         log=log,
-                                         log_ids=log_ids)
-                handles.append(handle)
-
-        for h in tqdm(handles, desc='Waiting for tasks to finish'):
-            done = h.done()
-            result = h.result()
-            if done and not result.empty:
-                all_items.append(result)
-    else:
-        for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
-            case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
-            result = identify_fn_per_case(case,
-                                          parallel_activities=parallel_activities,
-                                          case_id=case_id,
-                                          log_calendar=log_calendar,
-                                          log=log,
-                                          log_ids=log_ids)
-            if result is not None:
-                all_items.append(result)
-
-    if len(all_items) == 0:
-        return None
-
-    result: pd.DataFrame = join_fn(all_items)
-
-    if result is not None:
-        result['wt_total_seconds'] = result[WAITING_TIME_TOTAL_KEY] / np.timedelta64(1, 's')
-
-    return result
 
 
 def join_per_case_items(items: List[pd.DataFrame]) -> Optional[pd.DataFrame]:

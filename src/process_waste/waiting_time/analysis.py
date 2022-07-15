@@ -1,178 +1,39 @@
 from collections import namedtuple
-from typing import Dict, Optional, Tuple, List
+from typing import Optional, List, Tuple
 
-import click
-import numpy as np
 import pandas as pd
 
-import process_waste.helpers
-from process_waste.helpers import WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
-    BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil
+from batch_processing_analysis.config import EventLogIDs
+from process_waste import log_ids_non_nil, WAITING_TIME_TOTAL_KEY, WAITING_TIME_CONTENTION_KEY, \
+    WAITING_TIME_BATCHING_KEY, WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, \
+    WAITING_TIME_EXTRANEOUS_KEY, BATCH_INSTANCE_ENABLED_KEY
 from process_waste.calendar.intervals import Interval
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
 
-from batch_processing_analysis.config import EventLogIDs
-
 TRANSITION_COLUMN_KEY = 'transition_source_index'
 
 
-@print_section_boundaries('Hand-off analysis')
-def identify(
-        log: pd.DataFrame,
-        parallel_activities: Dict[str, set],
-        parallel_run=True,
-        log_ids: Optional[EventLogIDs] = None,
-        calendar: Optional[Dict] = None) -> pd.DataFrame:
-    click.echo(f'Handoff identification. Parallel run: {parallel_run}')
-    result = process_waste.helpers.identify_main(
-        log=log,
-        parallel_activities=parallel_activities,
-        identify_fn_per_case=__identify_handoffs_per_case_and_make_report,
-        join_fn=process_waste.helpers.join_per_case_items,
-        parallel_run=parallel_run,
-        log_ids=log_ids,
-        calendar=calendar)
-    return result
-
-
-def __identify_handoffs_per_case_and_make_report(case: pd.DataFrame, **kwargs) -> pd.DataFrame:
-    parallel_activities = kwargs['parallel_activities']
-    case_id = kwargs['case_id']
-    log_calendar = kwargs['log_calendar']
-    log = kwargs['log']
-    log_ids = log_ids_non_nil(kwargs.get('log_ids'))
-
-    case = case.sort_values(by=[log_ids.end_time, log_ids.start_time]).copy()
-
-    # converting timestamps to datetime
-    log = convert_timestamp_columns_to_datetime(log, log_ids)
-    case = convert_timestamp_columns_to_datetime(case, log_ids)
-
-    __mark_activity_transitions(case, parallel_activities, log_ids=log_ids)
-
-    # __mark_handoffs_only(case, log_ids=log_ids)
-
-    handoffs = __analyze_transitions(case, log_calendar, log, log_ids=log_ids)
-
-    handoffs_with_frequency = __calculate_frequency_and_duration(handoffs)
-
-    # dropping edge cases with Start and End as an activity
-    starts_ends_values = ['Start', 'End']
-    starts_and_ends = (handoffs_with_frequency['source_activity'].isin(starts_ends_values)
-                       & handoffs_with_frequency['source_resource'].isin(starts_ends_values)) \
-                      | (handoffs_with_frequency['destination_activity'].isin(starts_ends_values)
-                         & handoffs_with_frequency['destination_resource'].isin(starts_ends_values))
-    handoffs_with_frequency = handoffs_with_frequency[starts_and_ends == False]
-
-    # attaching case ID as additional information
-    handoffs_with_frequency['case_id'] = case_id
-
-    return handoffs_with_frequency
-
-
-def __mark_activity_transitions(
-        case: pd.DataFrame,
-        parallel_activities: Optional[Dict[str, set]] = None,
-        log_ids: Optional[EventLogIDs] = None):
-    log_ids = log_ids_non_nil(log_ids)
-
-    # NOTE: we assume (a) the case was sorted by end time
-
-    if not parallel_activities:
-        parallel_activities = {}
-
-    case[TRANSITION_COLUMN_KEY] = np.NAN
-
-    # processing the case backwards
-    reversed_index = list(reversed(case.index))
-    for i in range(len(reversed_index)):
-        non_concurrent_previous_event_found = False
-
-        index = reversed_index[i]
-        current_event = case.loc[index]
-        parallel_activities_for_current_event = parallel_activities.get(current_event[log_ids.activity], [])
-
-        previous_event_index_delta = i + 1
-        while not non_concurrent_previous_event_found:
-            if previous_event_index_delta > len(reversed_index) - 1:
-                break
-
-            previous_event_index = reversed_index[previous_event_index_delta]
-            previous_event = case.loc[previous_event_index]
-            # Check if they are overlapping
-            overlapping_activity_instances = previous_event[log_ids.end_time] > current_event[log_ids.start_time]
-            if previous_event[log_ids.activity] in parallel_activities_for_current_event or overlapping_activity_instances:
-                # If they are concurrent activities, or overlapping instances, jump to the previous event
-                previous_event_index_delta += 1
-            else:
-                # If they are not concurrent nor overlapping, transition!
-                case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
-                non_concurrent_previous_event_found = True
-
-
-def __calculate_frequency_and_duration(handoffs: pd.DataFrame) -> pd.DataFrame:
-    # calculating frequency per case of the handoffs with the same activities and resources
-    columns = handoffs.columns.tolist()
-    handoff_with_frequency = pd.DataFrame(columns=columns)
-    handoff_grouped = handoffs.groupby(by=[
-        'source_activity', 'source_resource', 'destination_activity', 'destination_resource'
-    ])
-    for group in handoff_grouped:
-        pair, records = group
-        handoff_with_frequency = pd.concat([handoff_with_frequency, pd.DataFrame({
-            'source_activity': [pair[0]],
-            'source_resource': [pair[1]],
-            'destination_activity': [pair[2]],
-            'destination_resource': [pair[3]],
-            'frequency': [len(records)],
-            'handoff_type': [records['handoff_type'].iloc[0]],
-            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
-            WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
-            WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
-            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
-            WAITING_TIME_UNAVAILABILITY_KEY: [records[WAITING_TIME_UNAVAILABILITY_KEY].sum()],
-            WAITING_TIME_EXTRANEOUS_KEY: [records[WAITING_TIME_EXTRANEOUS_KEY].sum()],
-        })], ignore_index=True)
-    return handoff_with_frequency
-
-
-def __mark_handoffs_only(
-        case: pd.DataFrame,
-        log_ids: Optional[EventLogIDs] = None):
-    log_ids = log_ids_non_nil(log_ids)
-
-    case.sort_values(by=[log_ids.end_time], inplace=True)
-
-    for (_, group) in case.groupby(by=[TRANSITION_COLUMN_KEY]):
-        if len(group) <= 1:
-            continue
-
-        min_index = group[log_ids.start_time].idxmin()
-        other_indices = group.index.difference([min_index])
-        case.loc[other_indices, TRANSITION_COLUMN_KEY] = np.NAN
-
-
-def __analyze_transitions(
-        case: pd.DataFrame,
+def run(case: pd.DataFrame,
         log_calendar: dict,
         log: Optional[pd.DataFrame] = None,
         log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    """Runs the waiting time analysis on transitions of the given case."""
+
     log_ids = log_ids_non_nil(log_ids)
 
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
                WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
-    handoffs = pd.DataFrame(columns=columns)
+    transitions = pd.DataFrame(columns=columns)
 
-    handoffs_index = case[~case[TRANSITION_COLUMN_KEY].isna()].index
+    transitions_index = case[~case[TRANSITION_COLUMN_KEY].isna()].index
 
     # setting NaT to zero duration
     if WAITING_TIME_CONTENTION_KEY in case.columns:
         case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
 
-    for loc in handoffs_index:
+    for loc in transitions_index:
         destination = case.loc[loc]
         destination_index = pd.Index([loc])
         source_index = int(destination[TRANSITION_COLUMN_KEY])
@@ -207,16 +68,7 @@ def __analyze_transitions(
             wt_unavailability = pd.Timedelta(0)
             wt_extraneous = pd.Timedelta(0)
 
-        # if wt_total > pd.Timedelta(0):
-        #     print(f'\nCase {destination[log_ids.case]}, activity {destination[log_ids.activity]}')
-        #     print(f'wt_batching_interval: {wt_batching_interval}')
-        #     print(f'wt_contention_intervals: {wt_contention_intervals}')
-        #     print(f'wt_prioritization_intervals: {wt_prioritization_intervals}')
-        #     print(f'wt_unavailability_intervals: {wt_unavailability_intervals}')
-        #     print(f'wt_extraneous: {wt_extraneous}')
-
-        # handoff type identification
-        handoff_type = 'transition'
+        transition_type = 'transition'
 
         # appending the handoff data
         handoff = pd.DataFrame({
@@ -224,7 +76,7 @@ def __analyze_transitions(
             'source_resource': [source[log_ids.resource]],
             'destination_activity': [destination[log_ids.activity]],
             'destination_resource': [destination[log_ids.resource]],
-            'handoff_type': [handoff_type],
+            'handoff_type': [transition_type],
             WAITING_TIME_TOTAL_KEY: [wt_total],
             WAITING_TIME_BATCHING_KEY: [wt_batching],
             WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
@@ -232,15 +84,13 @@ def __analyze_transitions(
             WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
             WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
         })
-        handoffs = pd.concat([handoffs, handoff], ignore_index=True)
+        transitions = pd.concat([transitions, handoff], ignore_index=True)
 
     # filling in N/A with some values
-    handoffs['source_resource'] = handoffs['source_resource'].fillna('NA')
-    handoffs['destination_resource'] = handoffs['destination_resource'].fillna('NA')
-    return handoffs
+    transitions['source_resource'] = transitions['source_resource'].fillna('NA')
+    transitions['destination_resource'] = transitions['destination_resource'].fillna('NA')
+    return transitions
 
-
-# Waiting Time Analysis
 
 def __wt_unavailability_intervals(destination_index, log, log_calendar, log_ids) -> List[Interval]:
     """Discovers waiting time due to unavailability of resources."""

@@ -4,7 +4,7 @@ import click
 import pandas as pd
 
 from process_waste.cte_impact import CTEImpactAnalysis
-from .transportation import identify
+from process_waste.main import run
 
 
 @click.command()
@@ -15,7 +15,7 @@ from .transportation import identify
 @click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
               help='Run the tool using all available cores in parallel.')
 def main(log_path: Path, output_dir: Path, parallel: bool):
-    result = identify(log_path, parallel)
+    result = run(log_path, parallel)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'

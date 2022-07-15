@@ -28,7 +28,7 @@ def test_batch_processing_analysis(assets_path):
                                                                             process_waste.helpers.END_TIMESTAMP_KEY], utc=True)
 
     # Run main analysis
-    batch_event_log = batching.run_analysis(event_log)
+    batch_event_log = batching.run(event_log)
 
     assert batch_event_log is not None
     assert 'batch_creation_wt' in batch_event_log.columns

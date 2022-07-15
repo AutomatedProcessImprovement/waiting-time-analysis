@@ -13,10 +13,10 @@ RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
 BATCH_MIN_SIZE = 1
 
 
-def run_analysis(event_log: pd.DataFrame,
-                 log_ids: EventLogIDs = None,
-                 rscript_path: str = '/usr/local/bin/Rscript',
-                 batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
+def run(event_log: pd.DataFrame,
+        log_ids: EventLogIDs = None,
+        rscript_path: str = '/usr/local/bin/Rscript',
+        batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
     global RSCRIPT_BIN_PATH
 
     config = Configuration()
@@ -32,7 +32,7 @@ def run_analysis(event_log: pd.DataFrame,
         raise e
 
 
-@print_section_boundaries('Batch analysis')
+@print_section_boundaries('Batch Analysis')
 def add_columns_from_batch_analysis(
         log,
         column_names: tuple = (BATCH_INSTANCE_ENABLED_KEY,),
@@ -40,7 +40,7 @@ def add_columns_from_batch_analysis(
         batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
     log_ids = log_ids_non_nil(log_ids)
 
-    batch_log = run_analysis(log, log_ids=log_ids, batch_size=batch_size)
+    batch_log = run(log, log_ids=log_ids, batch_size=batch_size)
     log[log_ids.start_time] = log[log_ids.start_time].apply(__nullify_microseconds)
     log[log_ids.end_time] = log[log_ids.end_time].apply(__nullify_microseconds)
     result = pd.merge(

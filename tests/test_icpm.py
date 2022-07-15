@@ -3,8 +3,9 @@ import pytest
 
 import process_waste.helpers
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import identify, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
+from process_waste import WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
+from process_waste.main import run
 
 manual_log_calendar = {
     'Marcus': [
@@ -181,7 +182,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     batch_size = test_data['batch_size']
 
-    result = identify(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
+    result = run(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
