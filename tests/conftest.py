@@ -4,11 +4,12 @@ from typing import List
 
 import pandas as pd
 import pytest
+
+import process_waste.helpers
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, EventLogIDs
-from process_waste import WAITING_TIME_TOTAL_KEY, START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, \
+from process_waste.helpers import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_TOTAL_KEY, \
     BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY
-from process_waste.core import core
 from process_waste.waiting_time import batching
 
 
@@ -74,7 +75,7 @@ def config() -> Configuration:
 @pytest.fixture
 def event_log(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.node.get_closest_marker('log_path').args[0]
-    log = core.read_csv(log_path)
+    log = process_waste.helpers.read_csv(log_path)
 
     log = batching.add_columns_from_batch_analysis(
         log, column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY))
@@ -87,7 +88,7 @@ def event_log(request, assets_path) -> pd.DataFrame:
 @pytest.fixture(params=['PurchasingExample.csv', 'Production.csv'])
 def event_log_parametrized(request, assets_path) -> pd.DataFrame:
     log_path = assets_path / request.param
-    log = core.read_csv(log_path)
-    core.add_enabled_timestamp(log)
+    log = process_waste.helpers.read_csv(log_path)
+    process_waste.helpers.add_enabled_timestamp(log)
     log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
     return log

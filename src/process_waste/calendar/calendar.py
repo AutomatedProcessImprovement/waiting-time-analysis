@@ -4,7 +4,7 @@ import pandas as pd
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
 from batch_processing_analysis.config import EventLogIDs
-from process_waste import GRANULARITY_MINUTES, log_ids_non_nil
+from process_waste.helpers import GRANULARITY_MINUTES, log_ids_non_nil
 from process_waste.calendar.intervals import Interval, prosimos_interval_to_interval
 
 UNDIFFERENTIATED_RESOURCE_POOL_KEY = "undifferentiated_resource_pool"

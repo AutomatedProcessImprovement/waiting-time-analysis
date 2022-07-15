@@ -3,7 +3,7 @@ from pathlib import Path
 import click
 import pandas as pd
 
-from process_waste import CTEImpactAnalysis
+from process_waste.cte_impact import CTEImpactAnalysis
 from .transportation import identify
 
 

@@ -3,8 +3,8 @@ from typing import List
 import pandas as pd
 import pytest
 
-from process_waste import core
-from process_waste.core import timezone_aware_subtraction
+import process_waste.helpers
+from process_waste.helpers import timezone_aware_subtraction
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def case_enabled(assets_path) -> pd.DataFrame:
 
 @pytest.mark.log_path('BIMP_example.csv')
 def test_alpha_oracle(event_log):
-    result = core.parallel_activities_with_alpha_oracle(event_log)
+    result = process_waste.helpers.parallel_activities_with_alpha_oracle(event_log)
     assert result is not None
 
 
@@ -48,5 +48,5 @@ def handoffs(assets_path) -> List[pd.DataFrame]:
 
 
 def test_join_handoffs(handoffs):
-    result = core.join_per_case_items(handoffs)
+    result = process_waste.helpers.join_per_case_items(handoffs)
     assert result is not None and not result.empty

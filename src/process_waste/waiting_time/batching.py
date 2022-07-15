@@ -6,7 +6,7 @@ import pandas as pd
 
 from batch_processing_analysis.analysis import BatchProcessingAnalysis
 from batch_processing_analysis.config import EventLogIDs, Configuration
-from process_waste import print_section_boundaries, default_log_ids, BATCH_INSTANCE_ENABLED_KEY, \
+from process_waste.helpers import BATCH_INSTANCE_ENABLED_KEY, default_log_ids, print_section_boundaries, \
     convert_timestamp_columns_to_datetime, log_ids_non_nil
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')

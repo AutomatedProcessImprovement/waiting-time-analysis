@@ -3,18 +3,18 @@ import pytest
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
 import process_waste.calendar.intervals
-from process_waste import RESOURCE_KEY, ACTIVITY_KEY, END_TIMESTAMP_KEY, START_TIMESTAMP_KEY
+import process_waste.helpers
+from process_waste.helpers import END_TIMESTAMP_KEY, ACTIVITY_KEY, RESOURCE_KEY, START_TIMESTAMP_KEY
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
 from process_waste.calendar.intervals import WeekDay, Interval, intersect_intervals
-from process_waste.core import core
 
 
 @pytest.fixture
 def log_calendar(assets_path) -> dict:
     log_path = assets_path / 'PurchasingExample.csv'
 
-    event_log = core.read_csv(log_path)
+    event_log = process_waste.helpers.read_csv(log_path)
     calendar_factory = CalendarFactory(15)
     for (index, event) in event_log.iterrows():
         resource = event[RESOURCE_KEY]
@@ -33,7 +33,7 @@ def log_calendar(assets_path) -> dict:
 
 def test_calendar_discovery(assets_path):
     log_path = assets_path / 'PurchasingExample.csv'
-    event_log = core.read_csv(log_path)
+    event_log = process_waste.helpers.read_csv(log_path)
     calendar_factory = CalendarFactory(15)
     for (index, event) in event_log.iterrows():
         resource = event[RESOURCE_KEY]
@@ -60,7 +60,7 @@ def test_calendar_discovery(assets_path):
 
 def test_calendar_make(assets_path):
     log_path = assets_path / 'non_processing_intervals.csv'
-    event_log = core.read_csv(log_path)
+    event_log = process_waste.helpers.read_csv(log_path)
     mined_calendar = calendar.make(event_log, granularity=60)
     assert mined_calendar is not None
     assert 'R1' in mined_calendar
@@ -68,7 +68,7 @@ def test_calendar_make(assets_path):
 
 def test_calendar_make_undifferentiated(assets_path):
     log_path = assets_path / 'undifferentiated_pool.csv'
-    event_log = core.read_csv(log_path)
+    event_log = process_waste.helpers.read_csv(log_path)
     mined_calendar = calendar.make(event_log, granularity=60, differentiated=False)
     assert mined_calendar is not None
     assert len(mined_calendar) == 1

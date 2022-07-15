@@ -1,10 +1,10 @@
 import pandas as pd
 import pytest
 
+import process_waste.helpers
 from batch_processing_analysis.config import EventLogIDs
 from process_waste import identify, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY
-from process_waste.core import core
 
 manual_log_calendar = {
     'Marcus': [
@@ -188,7 +188,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     # test case expected values if available
     expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if 'expected' in test_data else None
-    expected_data = core.read_csv(expected_path) if expected_path else None
+    expected_data = process_waste.helpers.read_csv(expected_path) if expected_path else None
 
     # assert
     if expected_data is not None:

@@ -2,7 +2,8 @@ from typing import Optional, Tuple, List
 
 import numpy as np
 import pandas as pd
-from process_waste import log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY
+from process_waste import log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY
+from process_waste.helpers import BATCH_INSTANCE_ID_KEY
 from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
 
 from batch_processing_analysis.config import EventLogIDs

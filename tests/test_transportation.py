@@ -1,6 +1,7 @@
 import pytest
 
-from process_waste import WAITING_TIME_BATCHING_KEY, default_log_ids
+from process_waste import WAITING_TIME_BATCHING_KEY
+from process_waste.helpers import default_log_ids
 from process_waste.transportation import identify
 
 

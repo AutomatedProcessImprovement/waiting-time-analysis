@@ -1,16 +1,17 @@
 import concurrent.futures
 import multiprocessing
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import Optional, Dict, List, Tuple
 
 import click
 import numpy as np
 import pandas as pd
-from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
-from estimate_start_times.config import Configuration, ReEstimationMethod, ConcurrencyOracleType, \
-    ResourceAvailabilityType, HeuristicsThresholds
-from batch_processing_analysis.config import EventLogIDs
 from tqdm import tqdm
+
+from batch_processing_analysis.config import EventLogIDs
+from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
+from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
+    HeuristicsThresholds, ReEstimationMethod
 
 END_TIMESTAMP_KEY = 'time:timestamp'
 ACTIVITY_KEY = 'concept:name'
@@ -27,9 +28,7 @@ WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
 BATCH_INSTANCE_ENABLED_KEY = 'batch_instance_enabled'
 BATCH_INSTANCE_ID_KEY = 'batch_instance_id'
 CTE_IMPACT_KEY = 'cte_impact'
-
 GRANULARITY_MINUTES = 15
-
 default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time columns
     case=CASE_KEY,
     activity=ACTIVITY_KEY,
@@ -38,7 +37,6 @@ default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time col
     enabled_time=ENABLED_TIMESTAMP_KEY,
     resource=RESOURCE_KEY,
 )
-
 default_configuration = Configuration(
     log_ids=default_log_ids,
     concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,

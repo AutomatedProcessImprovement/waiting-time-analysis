@@ -4,9 +4,11 @@ from typing import Dict, Optional, Tuple, List
 import click
 import numpy as np
 import pandas as pd
-from process_waste import core, WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
+
+import process_waste.helpers
+from process_waste.helpers import WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
     WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
-    convert_timestamp_columns_to_datetime, log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries
+    BATCH_INSTANCE_ENABLED_KEY, print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil
 from process_waste.calendar.intervals import Interval
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
@@ -24,11 +26,11 @@ def identify(
         log_ids: Optional[EventLogIDs] = None,
         calendar: Optional[Dict] = None) -> pd.DataFrame:
     click.echo(f'Handoff identification. Parallel run: {parallel_run}')
-    result = core.identify_main(
+    result = process_waste.helpers.identify_main(
         log=log,
         parallel_activities=parallel_activities,
         identify_fn_per_case=__identify_handoffs_per_case_and_make_report,
-        join_fn=core.join_per_case_items,
+        join_fn=process_waste.helpers.join_per_case_items,
         parallel_run=parallel_run,
         log_ids=log_ids,
         calendar=calendar)
