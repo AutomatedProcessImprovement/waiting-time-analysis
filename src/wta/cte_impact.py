@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from process_waste.helpers import log_ids_non_nil, EventLogIDs
+from wta.helpers import log_ids_non_nil, EventLogIDs
 
 
 @dataclass

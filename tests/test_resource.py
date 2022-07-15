@@ -1,14 +1,14 @@
 import pandas as pd
 
-import process_waste.helpers
-from process_waste.calendar.intervals import pd_interval_to_interval
-from process_waste.waiting_time.resource_unavailability import non_processing_intervals
+import wta.helpers
+from wta.calendar.intervals import pd_interval_to_interval
+from wta.waiting_time.resource_unavailability import non_processing_intervals
 
 
 class TestResource:
     def test_non_processing_intervals(self, assets_path):
         log_path = assets_path / 'non_processing_intervals.csv'
-        event_log = process_waste.helpers.read_csv(log_path)
+        event_log = wta.helpers.read_csv(log_path)
         event_index = pd.Index([2])
 
         result = non_processing_intervals(event_index, event_log)
@@ -19,7 +19,7 @@ class TestResource:
 
     def test_non_processing_intervals_2(self, assets_path):
         log_path = assets_path / 'non_processing_intervals_2.csv'
-        event_log = process_waste.helpers.read_csv(log_path)
+        event_log = wta.helpers.read_csv(log_path)
         event_index = pd.Index([2])
 
         expected_result = []

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from process_waste.waiting_time.analysis import __remove_overlapping_time_from_intervals
+from wta.waiting_time.analysis import __remove_overlapping_time_from_intervals
 
 # Pandas intervals
 

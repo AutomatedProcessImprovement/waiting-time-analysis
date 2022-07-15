@@ -3,8 +3,8 @@ from pathlib import Path
 import click
 import pandas as pd
 
-from process_waste.cte_impact import CTEImpactAnalysis
-from process_waste.main import run
+from wta.cte_impact import CTEImpactAnalysis
+from wta.main import run
 
 
 @click.command()

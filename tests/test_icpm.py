@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-import process_waste.helpers
-from process_waste.main import run
+import wta.helpers
+from wta.main import run
 
 manual_log_calendar = {
     'Marcus': [
@@ -192,7 +192,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
     parallel = test_data['parallel_run']
     output_dir = assets_path / 'icpm/handoff-logs'
 
-    log_ids = process_waste.EventLogIDs()
+    log_ids = wta.EventLogIDs()
     log_ids.start_time = 'start_time'
     log_ids.end_time = 'end_time'
     log_ids.case = 'case_id'
@@ -210,7 +210,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     # test case expected values if available
     expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if 'expected' in test_data else None
-    expected_data = process_waste.helpers.read_csv(expected_path) if expected_path else None
+    expected_data = wta.helpers.read_csv(expected_path) if expected_path else None
 
     # assert
     if expected_data is not None:

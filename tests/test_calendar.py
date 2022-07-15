@@ -1,20 +1,18 @@
 import pandas as pd
 import pytest
-from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
-import process_waste.calendar.intervals
-import process_waste.helpers
-from process_waste.helpers import END_TIMESTAMP_KEY, ACTIVITY_KEY, RESOURCE_KEY, START_TIMESTAMP_KEY
-from process_waste.calendar import calendar
-from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
-from process_waste.calendar.intervals import WeekDay, Interval, intersect_intervals
+from bpdfr_simulation_engine.resource_calendar import CalendarFactory
+from wta.calendar import calendar
+from wta.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
+from wta.calendar.intervals import WeekDay, Interval, intersect_intervals, overall_duration
+from wta.helpers import END_TIMESTAMP_KEY, ACTIVITY_KEY, RESOURCE_KEY, START_TIMESTAMP_KEY, read_csv
 
 
 @pytest.fixture
 def log_calendar(assets_path) -> dict:
     log_path = assets_path / 'PurchasingExample.csv'
 
-    event_log = process_waste.helpers.read_csv(log_path)
+    event_log = read_csv(log_path)
     calendar_factory = CalendarFactory(15)
     for (index, event) in event_log.iterrows():
         resource = event[RESOURCE_KEY]
@@ -33,7 +31,7 @@ def log_calendar(assets_path) -> dict:
 
 def test_calendar_discovery(assets_path):
     log_path = assets_path / 'PurchasingExample.csv'
-    event_log = process_waste.helpers.read_csv(log_path)
+    event_log = read_csv(log_path)
     calendar_factory = CalendarFactory(15)
     for (index, event) in event_log.iterrows():
         resource = event[RESOURCE_KEY]
@@ -60,7 +58,7 @@ def test_calendar_discovery(assets_path):
 
 def test_calendar_make(assets_path):
     log_path = assets_path / 'non_processing_intervals.csv'
-    event_log = process_waste.helpers.read_csv(log_path)
+    event_log = read_csv(log_path)
     mined_calendar = calendar.make(event_log, granularity=60)
     assert mined_calendar is not None
     assert 'R1' in mined_calendar
@@ -68,7 +66,7 @@ def test_calendar_make(assets_path):
 
 def test_calendar_make_undifferentiated(assets_path):
     log_path = assets_path / 'undifferentiated_pool.csv'
-    event_log = process_waste.helpers.read_csv(log_path)
+    event_log = read_csv(log_path)
     mined_calendar = calendar.make(event_log, granularity=60, differentiated=False)
     assert mined_calendar is not None
     assert len(mined_calendar) == 1
@@ -85,7 +83,7 @@ def test_resource_work_time(log_calendar):
 def test_overall_duration(log_calendar):
     resource = 'Kim Passa'
     work_time = calendar.resource_working_hours_as_intervals(resource, log_calendar)
-    assert process_waste.calendar.intervals.overall_duration(work_time) > pd.Timedelta(0)
+    assert overall_duration(work_time) > pd.Timedelta(0)
 
 
 def test_intervals_overlap_a():

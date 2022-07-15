@@ -1,45 +1,50 @@
-# Process Waste
+# Waiting Time Analysis of Activity Transitions
 
-![CI Status](https://github.com/AutomatedProcessImprovement/process-waste/actions/workflows/main.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/pm4py-wrapper/badge.svg?branch=main)](https://coveralls.io/github/AutomatedProcessImprovement/pm4py-wrapper?branch=main)
+![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/main.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/waiting-time-analysis/badge.svg?branch=main)](https://coveralls.io/github/AutomatedProcessImprovement/pm4py-wrapper?branch=main)
 
 A tool to identify waste in a business process from an event log.
 
 ## Installation
 
+_Rscript_ should be installed on your system.
+
 ```shell
-$ git clone https://github.com/AutomatedProcessImprovement/process-waste.git process-waste
-$ cd process-waste
-$ git submodule update --init --recursive
-$ python3.9 -m venv venv
-$ source venv/bin/activate
-$ python -m pip install --upgrade pip
-$ pip install .
-$ cd start-time-estimator
-$ pip install -e .
+$ git clone https://github.com/AutomatedProcessImprovement/waiting-time-analysis.git waiting-time-analysis
+$ cd waiting-time-analysis
+$ export RSCRIPT_BIN_PATH=/usr/bin/Rscript # put your Rscript path here
+$ bash install.sh # installs R packages and Python dependencies
 ```
 
 ## Getting Started
 
 ```shell
-$ process-waste transportation -l data/PurschasingExample.xes
+$ wta -l tests/assets/PurschasingExample.csv
 ```
 
 The tool produces statistics in the CSV-format and saves it in the folder where the tool has been executed by default. 
 
 ## Usage
 
-See `process-waste --help` and `process-waste <cmd> --help` for more help.
+See `wta --help` and `wta <cmd> --help` for more help.
 
 ```
-Usage: process-waste [OPTIONS] COMMAND [ARGS]...
-
-  Grouping commands under main group.
+Usage: wta [OPTIONS]
 
 Options:
-  --help  Show this message and exit.
+  -l, --log_path PATH    Path to an event log in XES-format.  [required]
+  -o, --output_dir PATH  Path to an output directory where statistics will be
+                         saved.  [default: ./]
+  -p, --parallel         Run the tool using all available cores in parallel.
+                         [default: True]
+  --help                 Show this message and exit.
+```
 
-Commands:
-  transportation
+## Docker
+
+    
+```shell
+$ docker pull nokal/waiting-time-analysis
+$ docker run -v $(pwd)/data:/usr/src/app/data nokal/waiting-time-analysis wta -l /usr/src/app/data/<event_log_name.csv> -o /usr/src/app/data
 ```
 
 ## Contributing
@@ -49,14 +54,6 @@ For contributions, please install `pre-commit` to test the code before committin
 ```shell
 $ pip install pre-commit
 $ pre-commit install
-```
-
-Install `poetry` to manage dependencies and versioning.
-
-```shell
-$ python -m pip install poetry
-$ poetry version minor # or patch, major, etc. to bump the version
-$ poetry add <package> # to add a dependency
 ```
 
 ## References

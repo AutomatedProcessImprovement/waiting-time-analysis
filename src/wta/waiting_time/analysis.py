@@ -3,10 +3,10 @@ from typing import Optional, List, Tuple
 
 import pandas as pd
 
-from process_waste import log_ids_non_nil, EventLogIDs
-from process_waste.calendar.intervals import Interval
-from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
-from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
+from wta import log_ids_non_nil, EventLogIDs
+from wta.calendar.intervals import Interval
+from wta.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
+from wta.waiting_time.resource_unavailability import detect_unavailability_intervals
 
 
 def run(case: pd.DataFrame,

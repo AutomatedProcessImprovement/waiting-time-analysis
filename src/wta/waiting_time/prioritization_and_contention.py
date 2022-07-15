@@ -3,9 +3,9 @@ from typing import Optional, Tuple, List
 import numpy as np
 import pandas as pd
 
-from process_waste import log_ids_non_nil
-from process_waste.helpers import EventLogIDs
-from process_waste.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
+from wta import log_ids_non_nil
+from wta.helpers import EventLogIDs
+from wta.waiting_time.resource_unavailability import other_processing_events_during_waiting_time_of_event
 
 
 def detect_contention_and_prioritization_intervals(

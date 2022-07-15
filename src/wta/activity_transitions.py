@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from process_waste import GRANULARITY_MINUTES
-from process_waste.helpers import print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil, \
+from wta import GRANULARITY_MINUTES
+from wta.helpers import print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil, \
     EventLogIDs, TRANSITION_COLUMN_KEY
-from process_waste.waiting_time import analysis as wt_analysis
+from wta.waiting_time import analysis as wt_analysis
 
 
 @print_section_boundaries('Activity Transitions Analysis')
@@ -20,7 +20,7 @@ def identify(
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
         calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
-    from process_waste.calendar.calendar import make as make_calendar
+    from wta.calendar.calendar import make as make_calendar
 
     click.echo(f'Parallel run: {parallel_run}')
 

@@ -3,15 +3,15 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "process-waste"
-version = "0.4.1"
-description = "Business process waste identification"
-authors = ["Ihar Suvorau <ihar.suvorau@gmail.com>"]
+name = "wta"
+version = "1.0.0"
+description = "Waiting time analysis of activity transitions in event logs"
+authors = ["Ihar Suvorau <ihar.suvorau@gmail.com>", "David Chapela de la Campa <david.chapela@ut.ee>"]
 license = "Apache-2.0"
 readme = "README.md"
 
 [tool.poetry.scripts]
-process-waste = "process_waste.cli:main"
+wta = "wta.cli:main"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
@@ -23,20 +23,7 @@ pytest = "^7.1.1"
 tqdm = "^4.63.0"
 pytest-cov = "^3.0.0"
 wittgenstein = [
-    # { path = "vendor/wittgenstein", develop = true },
     { git = "https://github.com/david-chapela/wittgenstein.git", branch = "master" }
-]
-batch-processing-analysis = [
-    # { path = "vendor/batch-processing-analysis", develop = true },
-    { git = "https://github.com/AutomatedProcessImprovement/batch-processing-analysis.git", branch = "main" }
-]
-diffresbp-simulator = [
-    # { path = "vendor/Prosimos", develop = true },
-    { git = "https://github.com/AutomatedProcessImprovement/Prosimos.git", branch = "main" }
-]
-estimate-start-times = [
-    # { path = "vendor/start-time-estimator", develop = true },
-    { git = "https://github.com/AutomatedProcessImprovement/start-time-estimator.git", branch = "main" }
 ]
 pytest-xdist = "^2.5.0"
 pendulum = "^2.1.2"

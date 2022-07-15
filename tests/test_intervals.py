@@ -3,7 +3,7 @@ from typing import List
 import pandas as pd
 import pytest
 
-from process_waste.calendar.intervals import Interval, WeekDay, subtract_intervals, pd_interval_to_interval, \
+from wta.calendar.intervals import Interval, WeekDay, subtract_intervals, pd_interval_to_interval, \
     remove_overlapping_time_from_intervals
 
 

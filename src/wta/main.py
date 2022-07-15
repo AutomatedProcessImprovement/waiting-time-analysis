@@ -3,17 +3,17 @@ from typing import Optional, List, Callable, Dict
 
 import click
 
-import process_waste.helpers
-from process_waste import log_ids_non_nil, calculate_cte_impact, activity_transitions
-from process_waste.waiting_time import batching
-from process_waste.waiting_time.batching import BATCH_MIN_SIZE
+from wta import log_ids_non_nil, calculate_cte_impact, activity_transitions, EventLogIDs, read_csv, \
+    parallel_activities_with_heuristic_oracle
+from wta.waiting_time import batching
+from wta.waiting_time.batching import BATCH_MIN_SIZE
 
 REPORT_INDEX_COLUMNS = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
 
 
 def run(log_path: Path,
         parallel_run=True,
-        log_ids: Optional[process_waste.EventLogIDs] = None,
+        log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None,
         batch_size: int = BATCH_MIN_SIZE) -> dict:
@@ -24,7 +24,7 @@ def run(log_path: Path,
 
     log_ids = log_ids_non_nil(log_ids)
 
-    log = process_waste.helpers.read_csv(log_path, log_ids=log_ids)
+    log = read_csv(log_path, log_ids=log_ids)
 
     # preprocess event log
     if preprocessing_funcs is not None:
@@ -49,7 +49,7 @@ def run(log_path: Path,
     # total waiting time
     log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
-    parallel_activities = process_waste.helpers.parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
+    parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
     handoff_report = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
                                                    calendar=calendar)
 
