@@ -4,9 +4,7 @@ from typing import Optional, List, Callable, Dict
 import click
 
 import process_waste.helpers
-from batch_processing_analysis.config import EventLogIDs
-from process_waste import log_ids_non_nil, BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY, \
-    WAITING_TIME_TOTAL_KEY, calculate_cte_impact, activity_transitions
+from process_waste import log_ids_non_nil, calculate_cte_impact, activity_transitions
 from process_waste.waiting_time import batching
 from process_waste.waiting_time.batching import BATCH_MIN_SIZE
 
@@ -15,7 +13,7 @@ REPORT_INDEX_COLUMNS = ['source_activity', 'source_resource', 'destination_activ
 
 def run(log_path: Path,
         parallel_run=True,
-        log_ids: Optional[EventLogIDs] = None,
+        log_ids: Optional[process_waste.EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None,
         batch_size: int = BATCH_MIN_SIZE) -> dict:
@@ -43,13 +41,13 @@ def run(log_path: Path,
     # taking batch creation time from the batch analysis
     log = batching.add_columns_from_batch_analysis(
         log,
-        column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY),
+        column_names=(log_ids.batch_instance_enabled, log_ids.batch_id),
         log_ids=log_ids,
         batch_size=batch_size)
     # NOTE: Batching analysis package adds enabled_timestamp column to the log that is used later
 
     # total waiting time
-    log[WAITING_TIME_TOTAL_KEY] = log[log_ids.start_time] - log[log_ids.enabled_time]
+    log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
     parallel_activities = process_waste.helpers.parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
     handoff_report = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,

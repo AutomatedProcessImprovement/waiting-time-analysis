@@ -3,6 +3,7 @@ from typing import List
 import pandas as pd
 import pytest
 
+import process_waste.activity_transitions
 import process_waste.helpers
 from process_waste.helpers import timezone_aware_subtraction
 
@@ -48,5 +49,5 @@ def handoffs(assets_path) -> List[pd.DataFrame]:
 
 
 def test_join_handoffs(handoffs):
-    result = process_waste.helpers.join_per_case_items(handoffs)
+    result = process_waste.activity_transitions.__join_per_case_items(handoffs)
     assert result is not None and not result.empty

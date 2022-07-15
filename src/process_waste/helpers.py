@@ -1,10 +1,11 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 
 import click
 import pandas as pd
 
-from batch_processing_analysis.config import EventLogIDs
+from batch_processing_analysis.config import EventLogIDs as batch_processing_analysis_EventLogIDs
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, ReEstimationMethod
@@ -15,17 +16,38 @@ CASE_KEY = 'case:concept:name'
 RESOURCE_KEY = 'org:resource'
 START_TIMESTAMP_KEY = 'start_timestamp'
 ENABLED_TIMESTAMP_KEY = 'enabled_timestamp'
+TRANSITION_COLUMN_KEY = 'transition_source_index'
+
 WAITING_TIME_TOTAL_KEY = 'wt_total'
 WAITING_TIME_BATCHING_KEY = 'wt_batching'
 WAITING_TIME_CONTENTION_KEY = 'wt_contention'
 WAITING_TIME_PRIORITIZATION_KEY = 'wt_prioritization'
 WAITING_TIME_UNAVAILABILITY_KEY = 'wt_unavailability'
 WAITING_TIME_EXTRANEOUS_KEY = 'wt_extraneous'
+
 BATCH_INSTANCE_ENABLED_KEY = 'batch_instance_enabled'
 BATCH_INSTANCE_ID_KEY = 'batch_instance_id'
+
 CTE_IMPACT_KEY = 'cte_impact'
+
 GRANULARITY_MINUTES = 15
-default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time columns
+
+
+@dataclass
+class EventLogIDs(batch_processing_analysis_EventLogIDs):
+    """Extended log IDs with waiting time and CTE impact keys."""
+
+    wt_total: str = WAITING_TIME_TOTAL_KEY
+    wt_batching: str = WAITING_TIME_BATCHING_KEY
+    wt_contention: str = WAITING_TIME_CONTENTION_KEY
+    wt_prioritization: str = WAITING_TIME_PRIORITIZATION_KEY
+    wt_unavailability: str = WAITING_TIME_UNAVAILABILITY_KEY
+    wt_extraneous: str = WAITING_TIME_EXTRANEOUS_KEY
+    cte_impact: str = CTE_IMPACT_KEY
+    transition_source_index: str = TRANSITION_COLUMN_KEY
+
+
+default_log_ids = EventLogIDs(
     case=CASE_KEY,
     activity=ACTIVITY_KEY,
     start_time=START_TIMESTAMP_KEY,
@@ -33,6 +55,7 @@ default_log_ids = EventLogIDs(  # TODO: extend EventLogIDs with waiting time col
     enabled_time=ENABLED_TIMESTAMP_KEY,
     resource=RESOURCE_KEY,
 )
+
 default_configuration = Configuration(
     log_ids=default_log_ids,
     concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
@@ -95,61 +118,6 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     if df2_col_name is None:
         df2_col_name = df1_col_name
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
-
-
-def join_per_case_items(items: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
-    """Joins a list of items summing up frequency and duration."""
-
-    items = list(filter(lambda df: not df.empty, items))
-
-    if len(items) == 0:
-        return None
-
-    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
-    grouped = pd.concat(items).groupby(columns)
-    result = pd.DataFrame(columns=columns)
-    for pair_index, group in grouped:
-        source_activity, source_resource, destination_activity, destination_resource = pair_index
-        group_wt_total: pd.Timedelta = group[WAITING_TIME_TOTAL_KEY].sum()
-
-        group_wt_batching = pd.Timedelta(0)
-        if WAITING_TIME_BATCHING_KEY in group.columns:
-            group_wt_batching = group[WAITING_TIME_BATCHING_KEY].sum()
-
-        group_wt_prioritization = pd.Timedelta(0)
-        if WAITING_TIME_PRIORITIZATION_KEY in group.columns:
-            group_wt_prioritization = group[WAITING_TIME_PRIORITIZATION_KEY].sum()
-
-        group_wt_contention = pd.Timedelta(0)
-        if WAITING_TIME_CONTENTION_KEY in group.columns:
-            group_wt_contention = pd.to_timedelta(group[WAITING_TIME_CONTENTION_KEY]).sum()
-
-        group_wt_unavailability = pd.Timedelta(0)
-        if WAITING_TIME_UNAVAILABILITY_KEY in group.columns:
-            group_wt_unavailability = pd.to_timedelta(group[WAITING_TIME_UNAVAILABILITY_KEY]).sum()
-
-        group_wt_extraneous = pd.Timedelta(0)
-        if WAITING_TIME_EXTRANEOUS_KEY in group.columns:
-            group_wt_extraneous = pd.to_timedelta(group[WAITING_TIME_EXTRANEOUS_KEY]).sum()
-
-        group_frequency: float = group['frequency'].sum()
-        group_case_id: str = ','.join(group['case_id'].astype(str).unique())
-        result = pd.concat([result, pd.DataFrame({
-            'source_activity': [source_activity],
-            'source_resource': [source_resource],
-            'destination_activity': [destination_activity],
-            'destination_resource': [destination_resource],
-            'frequency': [group_frequency],
-            'cases': [group_case_id],
-            WAITING_TIME_TOTAL_KEY: [group_wt_total],
-            WAITING_TIME_BATCHING_KEY: [group_wt_batching],
-            WAITING_TIME_PRIORITIZATION_KEY: [group_wt_prioritization],
-            WAITING_TIME_CONTENTION_KEY: [group_wt_contention],
-            WAITING_TIME_UNAVAILABILITY_KEY: [group_wt_unavailability],
-            WAITING_TIME_EXTRANEOUS_KEY: [group_wt_extraneous]
-        })], ignore_index=True)
-    result.reset_index(drop=True, inplace=True)
-    return result
 
 
 def add_enabled_timestamp(log: pd.DataFrame):

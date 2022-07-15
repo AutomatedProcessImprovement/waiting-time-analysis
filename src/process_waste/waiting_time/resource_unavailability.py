@@ -2,12 +2,10 @@ import datetime
 from typing import List, Optional
 
 import pandas as pd
-from process_waste import log_ids_non_nil
+from process_waste import log_ids_non_nil, EventLogIDs
 from process_waste.calendar import calendar
 from process_waste.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
 from process_waste.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals
-
-from batch_processing_analysis.config import EventLogIDs
 
 
 def other_processing_events_during_waiting_time_of_event(

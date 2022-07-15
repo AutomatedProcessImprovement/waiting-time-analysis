@@ -3,15 +3,10 @@ from typing import Optional, List, Tuple
 
 import pandas as pd
 
-from batch_processing_analysis.config import EventLogIDs
-from process_waste import log_ids_non_nil, WAITING_TIME_TOTAL_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_BATCHING_KEY, WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, \
-    WAITING_TIME_EXTRANEOUS_KEY, BATCH_INSTANCE_ENABLED_KEY
+from process_waste import log_ids_non_nil, EventLogIDs
 from process_waste.calendar.intervals import Interval
 from process_waste.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from process_waste.waiting_time.resource_unavailability import detect_unavailability_intervals
-
-TRANSITION_COLUMN_KEY = 'transition_source_index'
 
 
 def run(case: pd.DataFrame,
@@ -24,24 +19,24 @@ def run(case: pd.DataFrame,
 
     # preparing a different dataframe for handoff reporting
     columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource',
-               WAITING_TIME_TOTAL_KEY, 'handoff_type', WAITING_TIME_CONTENTION_KEY]
+               log_ids.wt_total, 'transition_type', log_ids.wt_contention]
     transitions = pd.DataFrame(columns=columns)
 
-    transitions_index = case[~case[TRANSITION_COLUMN_KEY].isna()].index
+    transitions_index = case[~case[log_ids.transition_source_index].isna()].index
 
     # setting NaT to zero duration
-    if WAITING_TIME_CONTENTION_KEY in case.columns:
-        case.loc[case[case[WAITING_TIME_CONTENTION_KEY].isna()].index, WAITING_TIME_CONTENTION_KEY] = pd.Timedelta(0)
+    if log_ids.wt_contention in case.columns:
+        case.loc[case[case[log_ids.wt_contention].isna()].index, log_ids.wt_contention] = pd.Timedelta(0)
 
     for loc in transitions_index:
         destination = case.loc[loc]
         destination_index = pd.Index([loc])
-        source_index = int(destination[TRANSITION_COLUMN_KEY])
+        source_index = int(destination[log_ids.transition_source_index])
         source = case.loc[source_index]
 
         # NOTE: for WT analysis we take only the destination activity, the source activity is not relevant
 
-        wt_total = destination[WAITING_TIME_TOTAL_KEY]
+        wt_total = destination[log_ids.wt_total]
         if wt_total > pd.Timedelta(0):
             # Perform analysis
             wt_batching_interval = __wt_batching_interval(destination, log_ids)
@@ -71,20 +66,20 @@ def run(case: pd.DataFrame,
         transition_type = 'transition'
 
         # appending the handoff data
-        handoff = pd.DataFrame({
+        transition = pd.DataFrame({
             'source_activity': [source[log_ids.activity]],
             'source_resource': [source[log_ids.resource]],
             'destination_activity': [destination[log_ids.activity]],
             'destination_resource': [destination[log_ids.resource]],
-            'handoff_type': [transition_type],
-            WAITING_TIME_TOTAL_KEY: [wt_total],
-            WAITING_TIME_BATCHING_KEY: [wt_batching],
-            WAITING_TIME_PRIORITIZATION_KEY: [wt_prioritization],
-            WAITING_TIME_CONTENTION_KEY: [wt_contention],
-            WAITING_TIME_UNAVAILABILITY_KEY: [wt_unavailability],
-            WAITING_TIME_EXTRANEOUS_KEY: [wt_extraneous]
+            'transition_type': [transition_type],
+            log_ids.wt_total: [wt_total],
+            log_ids.wt_batching: [wt_batching],
+            log_ids.wt_prioritization: [wt_prioritization],
+            log_ids.wt_contention: [wt_contention],
+            log_ids.wt_unavailability: [wt_unavailability],
+            log_ids.wt_extraneous: [wt_extraneous]
         })
-        transitions = pd.concat([transitions, handoff], ignore_index=True)
+        transitions = pd.concat([transitions, transition], ignore_index=True)
 
     # filling in N/A with some values
     transitions['source_resource'] = transitions['source_resource'].fillna('NA')
@@ -119,18 +114,18 @@ def __wt_batching_interval(
         log_ids: EventLogIDs) -> Optional[Tuple[pd.Timestamp, pd.Timestamp]]:
     """Discovers waiting time due to batching."""
 
-    if BATCH_INSTANCE_ENABLED_KEY not in destination.index:
+    if log_ids.batch_instance_enabled not in destination.index:
         return None
 
-    batch_enabled_timestamp = destination[BATCH_INSTANCE_ENABLED_KEY]
+    batch_enabled_timestamp = destination[log_ids.batch_instance_enabled]
     event_enabled_timestamp = destination[log_ids.enabled_time]
     if pd.isna(event_enabled_timestamp) or pd.isna(batch_enabled_timestamp):
         return None
 
-    if destination[log_ids.enabled_time] > destination[BATCH_INSTANCE_ENABLED_KEY]:
+    if destination[log_ids.enabled_time] > destination[log_ids.batch_instance_enabled]:
         return None
 
-    return destination[log_ids.enabled_time], destination[BATCH_INSTANCE_ENABLED_KEY]
+    return destination[log_ids.enabled_time], destination[log_ids.batch_instance_enabled]
 
 
 WaitingTimeDurations = namedtuple(

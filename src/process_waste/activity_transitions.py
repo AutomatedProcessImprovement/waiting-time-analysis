@@ -1,18 +1,15 @@
 import concurrent.futures
 import multiprocessing
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import click
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-import process_waste.helpers
-from batch_processing_analysis.config import EventLogIDs
 from process_waste import GRANULARITY_MINUTES
-from process_waste.helpers import WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, \
-    print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil
+from process_waste.helpers import print_section_boundaries, convert_timestamp_columns_to_datetime, log_ids_non_nil, \
+    EventLogIDs, TRANSITION_COLUMN_KEY
 from process_waste.waiting_time import analysis as wt_analysis
 
 
@@ -71,10 +68,10 @@ def identify(
     if len(all_items) == 0:
         return None
 
-    result: pd.DataFrame = process_waste.helpers.join_per_case_items(all_items)
+    result: pd.DataFrame = __join_per_case_items(all_items, log_ids=log_ids)
 
     if result is not None:
-        result['wt_total_seconds'] = result[WAITING_TIME_TOTAL_KEY] / np.timedelta64(1, 's')
+        result['wt_total_seconds'] = result[log_ids.wt_total] / np.timedelta64(1, 's')
 
     return result
 
@@ -96,7 +93,7 @@ def __identify_transitions_per_case_and_make_report(case: pd.DataFrame, **kwargs
 
     transitions = wt_analysis.run(case, log_calendar, log, log_ids=log_ids)
 
-    transitions_with_frequency = __calculate_frequency_and_duration(transitions)
+    transitions_with_frequency = __calculate_frequency_and_duration(transitions, log_ids=log_ids)
 
     # dropping edge cases with Start and End as an activity
     starts_ends_values = ['Start', 'End']
@@ -123,7 +120,7 @@ def __mark_activity_transitions(
     if not parallel_activities:
         parallel_activities = {}
 
-    case[wt_analysis.TRANSITION_COLUMN_KEY] = np.NAN
+    case[log_ids.transition_source_index] = np.NAN
 
     # processing the case backwards
     reversed_index = list(reversed(case.index))
@@ -149,11 +146,14 @@ def __mark_activity_transitions(
                 previous_event_index_delta += 1
             else:
                 # If they are not concurrent nor overlapping, transition!
-                case.at[index, wt_analysis.TRANSITION_COLUMN_KEY] = previous_event_index
+                case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
                 non_concurrent_previous_event_found = True
 
 
-def __calculate_frequency_and_duration(transitions: pd.DataFrame) -> pd.DataFrame:
+def __calculate_frequency_and_duration(transitions: pd.DataFrame,
+                                       log_ids: Optional[EventLogIDs] = None) -> pd.DataFrame:
+    log_ids = log_ids_non_nil(log_ids)
+
     # calculating frequency per case of the transitions with the same activities and resources
     columns = transitions.columns.tolist()
     transition_with_frequency = pd.DataFrame(columns=columns)
@@ -165,12 +165,69 @@ def __calculate_frequency_and_duration(transitions: pd.DataFrame) -> pd.DataFram
             'destination_activity': [pair[2]],
             'destination_resource': [pair[3]],
             'frequency': [len(records)],
-            'handoff_type': [records['handoff_type'].iloc[0]],
-            WAITING_TIME_TOTAL_KEY: [records[WAITING_TIME_TOTAL_KEY].sum()],
-            WAITING_TIME_BATCHING_KEY: [records[WAITING_TIME_BATCHING_KEY].sum()],
-            WAITING_TIME_PRIORITIZATION_KEY: [records[WAITING_TIME_PRIORITIZATION_KEY].sum()],
-            WAITING_TIME_CONTENTION_KEY: [records[WAITING_TIME_CONTENTION_KEY].sum()],
-            WAITING_TIME_UNAVAILABILITY_KEY: [records[WAITING_TIME_UNAVAILABILITY_KEY].sum()],
-            WAITING_TIME_EXTRANEOUS_KEY: [records[WAITING_TIME_EXTRANEOUS_KEY].sum()],
+            'transition_type': [records['handoff_type'].iloc[0]],
+            log_ids.wt_total: [records[log_ids.wt_total].sum()],
+            log_ids.wt_batching: [records[log_ids.wt_batching].sum()],
+            log_ids.wt_prioritization: [records[log_ids.wt_prioritization].sum()],
+            log_ids.wt_contention: [records[log_ids.wt_contention].sum()],
+            log_ids.wt_unavailability: [records[log_ids.wt_unavailability].sum()],
+            log_ids.wt_extraneous: [records[log_ids.wt_extraneous].sum()],
         })], ignore_index=True)
     return transition_with_frequency
+
+
+def __join_per_case_items(items: List[pd.DataFrame], log_ids: Optional[EventLogIDs] = None) -> Optional[pd.DataFrame]:
+    """Joins a list of items summing up frequency and duration."""
+
+    log_ids = log_ids_non_nil(log_ids)
+
+    items = list(filter(lambda df: not df.empty, items))
+
+    if len(items) == 0:
+        return None
+
+    columns = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
+    grouped = pd.concat(items).groupby(columns)
+    result = pd.DataFrame(columns=columns)
+    for pair_index, group in grouped:
+        source_activity, source_resource, destination_activity, destination_resource = pair_index
+        group_wt_total: pd.Timedelta = group[log_ids.wt_total].sum()
+
+        group_wt_batching = pd.Timedelta(0)
+        if log_ids.wt_batching in group.columns:
+            group_wt_batching = group[log_ids.wt_batching].sum()
+
+        group_wt_prioritization = pd.Timedelta(0)
+        if log_ids.wt_prioritization in group.columns:
+            group_wt_prioritization = group[log_ids.wt_prioritization].sum()
+
+        group_wt_contention = pd.Timedelta(0)
+        if log_ids.wt_contention in group.columns:
+            group_wt_contention = pd.to_timedelta(group[log_ids.wt_contention]).sum()
+
+        group_wt_unavailability = pd.Timedelta(0)
+        if log_ids.wt_unavailability in group.columns:
+            group_wt_unavailability = pd.to_timedelta(group[log_ids.wt_unavailability]).sum()
+
+        group_wt_extraneous = pd.Timedelta(0)
+        if log_ids.wt_extraneous in group.columns:
+            group_wt_extraneous = pd.to_timedelta(group[log_ids.wt_extraneous]).sum()
+
+        group_frequency: float = group['frequency'].sum()
+        group_case_id: str = ','.join(group['case_id'].astype(str).unique())
+        result = pd.concat([result, pd.DataFrame({
+            'source_activity': [source_activity],
+            'source_resource': [source_resource],
+            'destination_activity': [destination_activity],
+            'destination_resource': [destination_resource],
+            'frequency': [group_frequency],
+            'cases': [group_case_id],
+            log_ids.wt_total: [group_wt_total],
+            log_ids.wt_batching: [group_wt_batching],
+            log_ids.wt_prioritization: [group_wt_prioritization],
+            log_ids.wt_contention: [group_wt_contention],
+            log_ids.wt_unavailability: [group_wt_unavailability],
+            log_ids.wt_extraneous: [group_wt_extraneous]
+        })], ignore_index=True)
+    result.reset_index(drop=True, inplace=True)
+    return result

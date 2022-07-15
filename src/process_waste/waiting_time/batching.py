@@ -5,9 +5,9 @@ import click
 import pandas as pd
 
 from batch_processing_analysis.analysis import BatchProcessingAnalysis
-from batch_processing_analysis.config import EventLogIDs, Configuration
-from process_waste.helpers import BATCH_INSTANCE_ENABLED_KEY, default_log_ids, print_section_boundaries, \
-    convert_timestamp_columns_to_datetime, log_ids_non_nil
+from batch_processing_analysis.config import Configuration
+from process_waste.helpers import default_log_ids, print_section_boundaries, convert_timestamp_columns_to_datetime, \
+    log_ids_non_nil, EventLogIDs
 
 RSCRIPT_BIN_PATH = os.environ.get('RSCRIPT_BIN_PATH')
 BATCH_MIN_SIZE = 1
@@ -35,7 +35,7 @@ def run(event_log: pd.DataFrame,
 @print_section_boundaries('Batch Analysis')
 def add_columns_from_batch_analysis(
         log,
-        column_names: tuple = (BATCH_INSTANCE_ENABLED_KEY,),
+        column_names: tuple = (EventLogIDs().batch_instance_enabled,),
         log_ids: Optional[EventLogIDs] = None,
         batch_size: int = BATCH_MIN_SIZE) -> pd.DataFrame:
     log_ids = log_ids_non_nil(log_ids)
@@ -50,7 +50,7 @@ def add_columns_from_batch_analysis(
         ],
         how='left', on=[log_ids.case, log_ids.activity, log_ids.start_time])
 
-    result = convert_timestamp_columns_to_datetime(result, log_ids, (BATCH_INSTANCE_ENABLED_KEY,))
+    result = convert_timestamp_columns_to_datetime(result, log_ids, (log_ids.batch_instance_enabled,))
 
     return result
 

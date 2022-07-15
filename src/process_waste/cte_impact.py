@@ -4,10 +4,7 @@ from typing import Optional
 
 import pandas as pd
 
-from batch_processing_analysis.config import EventLogIDs
-from process_waste.helpers import WAITING_TIME_TOTAL_KEY, WAITING_TIME_BATCHING_KEY, WAITING_TIME_CONTENTION_KEY, \
-    WAITING_TIME_PRIORITIZATION_KEY, WAITING_TIME_UNAVAILABILITY_KEY, WAITING_TIME_EXTRANEOUS_KEY, CTE_IMPACT_KEY, \
-    log_ids_non_nil
+from process_waste.helpers import log_ids_non_nil, EventLogIDs
 
 
 @dataclass
@@ -41,13 +38,13 @@ def calculate_cte_impact(handoff_report, log: pd.DataFrame, log_ids: Optional[Ev
 
     # global CTE impact
 
-    total_processing_time = log[log_ids.end_time].max() - log[log_ids.start_time].min()
-    total_waiting_time = handoff_report[WAITING_TIME_TOTAL_KEY].sum()
-    total_wt_batching = handoff_report[WAITING_TIME_BATCHING_KEY].sum()
-    total_wt_prioritization = handoff_report[WAITING_TIME_PRIORITIZATION_KEY].sum()
-    total_wt_contention = handoff_report[WAITING_TIME_CONTENTION_KEY].sum()
-    total_wt_unavailability = handoff_report[WAITING_TIME_UNAVAILABILITY_KEY].sum()
-    total_wt_extraneous = handoff_report[WAITING_TIME_EXTRANEOUS_KEY].sum()
+    total_processing_time = get_total_processing_time(log, log_ids)
+    total_waiting_time = handoff_report[log_ids.wt_total].sum()
+    total_wt_batching = handoff_report[log_ids.wt_batching].sum()
+    total_wt_prioritization = handoff_report[log_ids.wt_prioritization].sum()
+    total_wt_contention = handoff_report[log_ids.wt_contention].sum()
+    total_wt_unavailability = handoff_report[log_ids.wt_unavailability].sum()
+    total_wt_extraneous = handoff_report[log_ids.wt_extraneous].sum()
 
     batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching)
     contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention)
@@ -66,7 +63,14 @@ def calculate_cte_impact(handoff_report, log: pd.DataFrame, log_ids: Optional[Ev
 
     # transitions CTE impact
 
-    handoff_report[CTE_IMPACT_KEY] = total_processing_time / (
-            total_processing_time + total_waiting_time - handoff_report[WAITING_TIME_TOTAL_KEY])
+    handoff_report[log_ids.cte_impact] = total_processing_time / (
+            total_processing_time + total_waiting_time - handoff_report[log_ids.wt_total])
 
     return result
+
+
+def get_total_processing_time(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> pd.Timedelta:
+    """Returns total processing time of the process."""
+    log_ids = log_ids_non_nil(log_ids)
+
+    return (log[log_ids.end_time] - log[log_ids.start_time]).sum()
