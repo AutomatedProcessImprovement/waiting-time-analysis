@@ -3,6 +3,7 @@ import pytest
 
 import wta.helpers
 from wta.main import run
+from wta.transitions_report import TransitionsReport
 
 manual_log_calendar = {
     'Marcus': [
@@ -204,6 +205,8 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
     batch_size = test_data['batch_size']
 
     result = run(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
+    result_response: TransitionsReport = result['transitions_report']
+    report = result_response.transitions_report
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
@@ -221,7 +224,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
         expected_data[log_ids.wt_unavailability] = pd.to_timedelta(expected_data[log_ids.wt_unavailability])
         expected_data[log_ids.wt_extraneous] = pd.to_timedelta(expected_data[log_ids.wt_extraneous])
 
-        result['handoff']['cases'] = result['handoff']['cases'].astype(object)
+        report['cases'] = report['cases'].astype(object)
         expected_data['cases'] = expected_data['cases'].astype(object)
 
         columns_to_compare = [
@@ -230,14 +233,14 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
             log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous
         ]
 
-        assert result['handoff'][columns_to_compare].equals(expected_data[columns_to_compare])
+        assert report[columns_to_compare].equals(expected_data[columns_to_compare])
 
     # save handoff results
     if test_data.get('save_report'):
-        if result['handoff'] is not None:
+        if report is not None:
             handoff_output_path = output_dir / (log_path.stem + '_handoff')
             handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
             print(f'Saving handoff report to {handoff_csv_path}')
-            result['handoff'].to_csv(handoff_csv_path, index=False)
+            report.to_csv(handoff_csv_path, index=False)
         else:
             print('No handoffs found')
