@@ -24,11 +24,14 @@ class TransitionsReport:
     total_extraneous_wt: float
 
     def __init__(self, transitions_report: pd.DataFrame, log: pd.DataFrame, log_ids: EventLogIDs):
+        transitions_report.rename(
+            columns={'destination_activity': 'target_activity',
+                     'destination_resource': 'target_resource'}, inplace=True)
         self.transitions_report = transitions_report
         self.num_cases = log[log_ids.case].nunique()
         self.num_activities = log[log_ids.activity].nunique()
         self.num_activity_instances = len(log[log_ids.activity])
-        self.num_transitions = len(transitions_report)
+        self.num_transitions = len(transitions_report.groupby(by=['source_activity', 'target_activity']))
         self.num_transition_instances = self.transitions_report['frequency'].sum()
 
         self.report = self.__regroup_report(log_ids)
@@ -43,14 +46,14 @@ class TransitionsReport:
     def __regroup_report(self, log_ids) -> List[Dict[str, Any]]:
         new_report = []
 
-        for (activities, report) in self.transitions_report.groupby(by=['source_activity', 'destination_activity']):
+        for (activities, report) in self.transitions_report.groupby(by=['source_activity', 'target_activity']):
             wt_by_resource = []
 
-            for (resources, resources_report) in report.groupby(by=['source_resource', 'destination_resource']):
+            for (resources, resources_report) in report.groupby(by=['source_resource', 'target_resource']):
                 wt_by_resource.append({
                     'source_resource': resources[0],
-                    'destination_resource': resources[1],
-                    'case_freq': len(resources_report['cases'].values[0].split(',')),
+                    'target_resource': resources[1],
+                    'case_freq': len(resources_report['cases'].values[0].split(',')) / self.num_cases,
                     'total_freq': resources_report['frequency'].sum(),
                     'total_wt': resources_report[log_ids.wt_total].sum().total_seconds(),
                     'batching_wt': resources_report[log_ids.wt_batching].sum().total_seconds(),
@@ -62,8 +65,8 @@ class TransitionsReport:
 
             new_report.append({
                 'source_activity': activities[0],
-                'destination_activity': activities[1],
-                'case_freq': len(report['cases'].values[0].split(',')),
+                'target_activity': activities[1],
+                'case_freq': len(report['cases'].values[0].split(',')) / self.num_cases,
                 'total_freq': report['frequency'].sum(),
                 'total_wt': report[log_ids.wt_total].sum().total_seconds(),
                 'batching_wt': report[log_ids.wt_batching].sum().total_seconds(),
