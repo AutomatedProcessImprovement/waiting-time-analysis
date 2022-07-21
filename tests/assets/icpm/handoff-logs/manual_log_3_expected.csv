@@ -1,4 +1,4 @@
-source_activity,source_resource,destination_activity,destination_resource,frequency,cases,wt_total,wt_batching,wt_prioritization,wt_contention,wt_unavailability,wt_extraneous,wt_total_seconds
+source_activity,source_resource,target_activity,target_resource,frequency,cases,wt_total,wt_batching,wt_prioritization,wt_contention,wt_unavailability,wt_extraneous,wt_total_seconds
 A,Carmine,B,Marcus,3.0,"1,7,13",0 days 04:30:00,0 days 01:30:00,0 days 00:00:00,0 days 01:30:00,0 days 01:30:00,0 days,16200.0
 A,Cole,B,Marcus,3.0,"0,6,12",0 days 09:45:00,0 days 02:15:00,0 days 04:30:00,0 days 01:30:00,0 days 01:30:00,0 days,35100.0
 A,Dom,B,Marcus,3.0,"2,8,14",0 days 04:30:00,0 days 00:00:00,0 days 00:00:00,0 days 03:00:00,0 days 01:30:00,0 days,16200.0

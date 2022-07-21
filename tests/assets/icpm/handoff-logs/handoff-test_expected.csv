@@ -1,4 +1,4 @@
-source_activity,source_resource,destination_activity,destination_resource,frequency,cases,wt_total,wt_batching,wt_prioritization,wt_contention,wt_unavailability,wt_extraneous,wt_total_seconds
+source_activity,source_resource,target_activity,target_resource,frequency,cases,wt_total,wt_batching,wt_prioritization,wt_contention,wt_unavailability,wt_extraneous,wt_total_seconds
 A,Anya,B,Marcus,24.0,"0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23",0 days 02:00:00,0 days,0 days,0 days 00:00:00,0 days 00:00:00,0 days 02:00:00,7200.0
 A,Anya,C,Marcus,24.0,"0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23",0 days 16:30:00,0 days,0 days,0 days 14:30:00,0 days 00:00:00,0 days 02:00:00,59400.0
 A,Anya,D,Marcus,24.0,"0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23",0 days 16:30:00,0 days,0 days,0 days 14:30:00,0 days 00:00:00,0 days 02:00:00,59400.0

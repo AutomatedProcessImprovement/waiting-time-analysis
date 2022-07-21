@@ -228,7 +228,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
         expected_data['cases'] = expected_data['cases'].astype(object)
 
         columns_to_compare = [
-            'source_activity', 'source_resource', 'destination_activity', 'destination_resource', 'frequency',
+            'source_activity', 'source_resource', 'target_activity', 'target_resource', 'frequency',
             log_ids.wt_total, log_ids.wt_batching, log_ids.wt_contention,
             log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous
         ]

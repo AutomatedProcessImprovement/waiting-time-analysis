@@ -24,14 +24,13 @@ class TransitionsReport:
     total_extraneous_wt: float
 
     def __init__(self, transitions_report: pd.DataFrame, log: pd.DataFrame, log_ids: EventLogIDs):
-        transitions_report.rename(
-            columns={'destination_activity': 'target_activity',
-                     'destination_resource': 'target_resource'}, inplace=True)
-        self.transitions_report = transitions_report
+
+        self.transitions_report = transitions_report.rename(columns={'destination_activity': 'target_activity',
+                                                                     'destination_resource': 'target_resource'})
         self.num_cases = log[log_ids.case].nunique()
         self.num_activities = log[log_ids.activity].nunique()
         self.num_activity_instances = len(log[log_ids.activity])
-        self.num_transitions = len(transitions_report.groupby(by=['source_activity', 'target_activity']))
+        self.num_transitions = len(self.transitions_report.groupby(by=['source_activity', 'target_activity']))
         self.num_transition_instances = self.transitions_report['frequency'].sum()
 
         self.report = self.__regroup_report(log_ids)
