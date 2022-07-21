@@ -5,6 +5,7 @@ import click
 
 from wta import log_ids_non_nil, calculate_cte_impact, activity_transitions, EventLogIDs, read_csv, \
     parallel_activities_with_heuristic_oracle
+from wta.transitions_report import TransitionsReport
 from wta.waiting_time import batching
 from wta.waiting_time.batching import BATCH_MIN_SIZE
 
@@ -50,9 +51,11 @@ def run(log_path: Path,
     log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
     parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
-    handoff_report = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
-                                                   calendar=calendar)
+    transitions_data = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
+                                                       calendar=calendar)
 
-    process_cte_impact = calculate_cte_impact(handoff_report, log, log_ids=log_ids)
+    process_cte_impact = calculate_cte_impact(transitions_data, log, log_ids=log_ids)
 
-    return {'handoff': handoff_report, 'process_cte_impact': process_cte_impact}
+    transitions_report = TransitionsReport(transitions_data, log, log_ids)
+
+    return {'transitions_report': transitions_report, 'process_cte_impact': process_cte_impact}

@@ -1,10 +1,10 @@
 from pathlib import Path
 
 import click
-import pandas as pd
 
 from wta.cte_impact import CTEImpactAnalysis
 from wta.main import run
+from wta.transitions_report import TransitionsReport
 
 
 @click.command()
@@ -20,27 +20,27 @@ def main(log_path: Path, output_dir: Path, parallel: bool):
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
 
-    handoff_report: pd.DataFrame = result.get('handoff')
+    transitions_report: TransitionsReport = result.get('transitions_report')
     process_cte_impact: CTEImpactAnalysis = result.get('process_cte_impact')
 
-    if handoff_report is not None:
-        handoff_output_path = output_dir / (log_path.stem + '_handoff')
+    if transitions_report is not None:
+        output_path = output_dir / (log_path.stem + '_transitions_report')
 
-        handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
-        print(f'Saving handoff report to {handoff_csv_path}')
-        handoff_report.to_csv(handoff_csv_path, index=False)
+        csv_path = output_path.with_suffix(extension_suffix)
+        print(f'Saving transitions report to {csv_path}')
+        transitions_report.transitions_report.to_csv(csv_path, index=False)
 
-        handoff_json_path = handoff_output_path.with_suffix('.json')
-        print(f'Saving handoff report to {handoff_json_path}')
-        handoff_report.to_json(handoff_json_path, orient='records')
+        json_path = output_path.with_suffix('.json')
+        print(f'Saving transitions report to {json_path}')
+        transitions_report.to_json(json_path)
     else:
-        print('No handoffs found')
+        print('No transitions found')
 
     if process_cte_impact:
-        process_cte_impact_output_path = output_dir / (log_path.stem + '_process_cte_impact')
-        process_cte_impact_json_path = process_cte_impact_output_path.with_suffix('.json')
-        print(f'Saving process CTE impact report to {process_cte_impact_json_path}')
-        process_cte_impact.to_json(process_cte_impact_json_path)
+        output_path = output_dir / (log_path.stem + '_process_cte_impact')
+        json_path = output_path.with_suffix('.json')
+        print(f'Saving process CTE impact report to {json_path}')
+        process_cte_impact.to_json(json_path)
 
 
 if __name__ == '__main__':
