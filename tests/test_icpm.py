@@ -204,9 +204,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     batch_size = test_data['batch_size']
 
-    result = run(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
-    result_response: TransitionsReport = result['transitions_report']
-    report = result_response.transitions_report
+    report: TransitionsReport = run(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
@@ -224,8 +222,8 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
         expected_data[log_ids.wt_unavailability] = pd.to_timedelta(expected_data[log_ids.wt_unavailability])
         expected_data[log_ids.wt_extraneous] = pd.to_timedelta(expected_data[log_ids.wt_extraneous])
 
-        report['cases'] = report['cases'].astype(object)
-        expected_data['cases'] = expected_data['cases'].astype(object)
+        report.transitions_report['cases'] = report.transitions_report['cases'].astype(object)
+        report.transitions_report['cases'] = expected_data['cases'].astype(object)
 
         columns_to_compare = [
             'source_activity', 'source_resource', 'target_activity', 'target_resource', 'frequency',
@@ -233,7 +231,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
             log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous
         ]
 
-        assert report[columns_to_compare].equals(expected_data[columns_to_compare])
+        assert report.transitions_report[columns_to_compare].equals(expected_data[columns_to_compare])
 
     # save handoff results
     if test_data.get('save_report'):
@@ -241,6 +239,6 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
             handoff_output_path = output_dir / (log_path.stem + '_handoff')
             handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
             print(f'Saving handoff report to {handoff_csv_path}')
-            report.to_csv(handoff_csv_path, index=False)
+            report.transitions_report.to_csv(handoff_csv_path, index=False)
         else:
             print('No handoffs found')
