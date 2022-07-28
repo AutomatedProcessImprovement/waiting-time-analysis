@@ -36,8 +36,7 @@ def test_transitions_report(assets_path, test_data):
     log_ids = test_data['log_ids']
     batch_size = test_data['batch_size']
 
-    result = run(log_path, parallel, log_ids=log_ids, batch_size=batch_size)
-    report: TransitionsReport = result['transitions_report']
+    report: TransitionsReport = run(log_path, parallel, log_ids=log_ids, batch_size=batch_size)
 
     assert report is not None
 

@@ -184,3 +184,10 @@ def log_ids_non_nil(log_ids: Optional[EventLogIDs]) -> EventLogIDs:
         return default_log_ids
 
     return log_ids
+
+
+def get_total_processing_time(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> pd.Timedelta:
+    """Returns total processing time of the process."""
+    log_ids = log_ids_non_nil(log_ids)
+
+    return (log[log_ids.end_time] - log[log_ids.start_time]).sum()

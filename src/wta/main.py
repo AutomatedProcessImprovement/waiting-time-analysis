@@ -3,7 +3,7 @@ from typing import Optional, List, Callable, Dict
 
 import click
 
-from wta import log_ids_non_nil, calculate_cte_impact, activity_transitions, EventLogIDs, read_csv, \
+from wta import log_ids_non_nil, activity_transitions, EventLogIDs, read_csv, \
     parallel_activities_with_heuristic_oracle
 from wta.transitions_report import TransitionsReport
 from wta.waiting_time import batching
@@ -17,7 +17,7 @@ def run(log_path: Path,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None,
-        batch_size: int = BATCH_MIN_SIZE) -> dict:
+        batch_size: int = BATCH_MIN_SIZE) -> TransitionsReport:
     """
     Entry point for the project. It starts the main analysis which identifies activity transitions, and then uses them
     to analyze different types of waiting time.
@@ -54,8 +54,6 @@ def run(log_path: Path,
     transitions_data = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
                                                        calendar=calendar)
 
-    process_cte_impact = calculate_cte_impact(transitions_data, log, log_ids=log_ids)
-
     transitions_report = TransitionsReport(transitions_data, log, log_ids)
 
-    return {'transitions_report': transitions_report, 'process_cte_impact': process_cte_impact}
+    return transitions_report

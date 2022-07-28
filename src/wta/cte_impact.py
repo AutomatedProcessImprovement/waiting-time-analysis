@@ -1,15 +1,18 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 
+from wta import get_total_processing_time
 from wta.helpers import log_ids_non_nil, EventLogIDs
 
 
 @dataclass
 class CTEImpactAnalysis:
     """Cycle time efficiency impact analysis."""
+
     batching_impact: float
     contention_impact: float
     prioritization_impact: float
@@ -21,38 +24,42 @@ class CTEImpactAnalysis:
         with filepath.open('w') as f:
             f.write(self.to_json_string())
 
+    def to_dict(self):
+        return {
+            'batching_impact': self.batching_impact,
+            'contention_impact': self.contention_impact,
+            'prioritization_impact': self.prioritization_impact,
+            'unavailability_impact': self.unavailability_impact,
+            'extraneous_impact': self.extraneous_impact,
+        }
+
     def to_json_string(self):
         """Return CTE impact analysis as JSON string."""
-        return f'{{\n' \
-               f'    "batching_impact": {self.batching_impact},\n' \
-               f'    "contention_impact": {self.contention_impact},\n' \
-               f'    "prioritization_impact": {self.prioritization_impact},\n' \
-               f'    "unavailability_impact": {self.unavailability_impact},\n' \
-               f'    "extraneous_impact": {self.extraneous_impact}\n' \
-               f'}}'
+        return json.dumps(self.to_dict())
 
 
-def calculate_cte_impact(handoff_report, log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> CTEImpactAnalysis:
-    """Calculates CTE impact of different types of wait time on the process level and transitions level."""
+def calculate_cte_impact(
+        report: pd.DataFrame,
+        total_processing_time: float,
+        total_waiting_time: float,
+        log_ids: Optional[EventLogIDs] = None) -> CTEImpactAnalysis:
+    """Calculates impact of waiting time on cycle time efficiency."""
+
     log_ids = log_ids_non_nil(log_ids)
 
-    # global CTE impact
+    total_wt_batching: pd.Timedelta = report[log_ids.wt_batching].sum()
+    total_wt_prioritization: pd.Timedelta = report[log_ids.wt_prioritization].sum()
+    total_wt_contention: pd.Timedelta = report[log_ids.wt_contention].sum()
+    total_wt_unavailability: pd.Timedelta = report[log_ids.wt_unavailability].sum()
+    total_wt_extraneous: pd.Timedelta = report[log_ids.wt_extraneous].sum()
 
-    total_processing_time = get_total_processing_time(log, log_ids)
-    total_waiting_time = handoff_report[log_ids.wt_total].sum()
-    total_wt_batching = handoff_report[log_ids.wt_batching].sum()
-    total_wt_prioritization = handoff_report[log_ids.wt_prioritization].sum()
-    total_wt_contention = handoff_report[log_ids.wt_contention].sum()
-    total_wt_unavailability = handoff_report[log_ids.wt_unavailability].sum()
-    total_wt_extraneous = handoff_report[log_ids.wt_extraneous].sum()
-
-    batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching)
-    contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention)
+    batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching.total_seconds())
+    contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention.total_seconds())
     prioritization_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_prioritization)
+            total_processing_time + total_waiting_time - total_wt_prioritization.total_seconds())
     unavailability_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_unavailability)
-    extraneous_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_extraneous)
+            total_processing_time + total_waiting_time - total_wt_unavailability.total_seconds())
+    extraneous_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_extraneous.total_seconds())
 
     result = CTEImpactAnalysis(
         batching_impact=batching_impact,
@@ -61,16 +68,4 @@ def calculate_cte_impact(handoff_report, log: pd.DataFrame, log_ids: Optional[Ev
         unavailability_impact=unavailability_impact,
         extraneous_impact=extraneous_impact)
 
-    # transitions CTE impact
-
-    handoff_report[log_ids.cte_impact] = total_processing_time / (
-            total_processing_time + total_waiting_time - handoff_report[log_ids.wt_total])
-
     return result
-
-
-def get_total_processing_time(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None) -> pd.Timedelta:
-    """Returns total processing time of the process."""
-    log_ids = log_ids_non_nil(log_ids)
-
-    return (log[log_ids.end_time] - log[log_ids.start_time]).sum()
