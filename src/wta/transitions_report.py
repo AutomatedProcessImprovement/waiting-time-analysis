@@ -73,6 +73,10 @@ class TransitionsReport:
             wt_by_resource = []
 
             for (resources, resources_report) in report.groupby(by=['source_resource', 'target_resource']):
+                cte_impact_total = \
+                    self.total_pt / (self.total_pt + self.total_wt - resources_report[log_ids.wt_total].sum().total_seconds())
+                cte_impact = calculate_cte_impact(resources_report, self.total_pt, self.total_wt, log_ids=log_ids)
+
                 wt_by_resource.append({
                     'source_resource': resources[0],
                     'target_resource': resources[1],
@@ -84,6 +88,8 @@ class TransitionsReport:
                     'contention_wt': resources_report[log_ids.wt_contention].sum().total_seconds(),
                     'unavailability_wt': resources_report[log_ids.wt_unavailability].sum().total_seconds(),
                     'extraneous_wt': resources_report[log_ids.wt_extraneous].sum().total_seconds(),
+                    'cte_impact_total_wt': cte_impact_total,
+                    'cte_impact': cte_impact.to_dict(),
                 })
 
             cte_impact_total = \
