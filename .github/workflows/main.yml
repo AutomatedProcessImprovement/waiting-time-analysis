@@ -76,7 +76,9 @@ jobs:
       - name: Make LCOV report
         shell: bash
         working-directory: /usr/src/app
-        run: coverage lcov
+        run: |
+          source venv/bin/activate
+          coverage lcov
 
       - name: Coveralls Upload
         uses: coverallsapp/github-action@master
