@@ -71,7 +71,7 @@ jobs:
           RSCRIPT_BIN_PATH: ${{ env.RSCRIPT_BIN_PATH }}
         run: |
           source venv/bin/activate
-          pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests | tee pytest-coverage.log
+          pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests
 
       - name: Upload the coverage report
         uses: actions/upload-artifact@v3
@@ -88,5 +88,4 @@ jobs:
       - name: Test Coverage
         uses: MishaKav/pytest-coverage-comment@main
         with:
-          pytest-coverage-path: /usr/src/app/pytest-coverage.log
           junitxml-path: /usr/src/app/pytest_coverage.xml
