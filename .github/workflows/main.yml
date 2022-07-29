@@ -73,19 +73,30 @@ jobs:
           source venv/bin/activate
           pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests
 
-      - name: Upload the coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest_coverage.xml
-          path: /usr/src/app/pytest_coverage.xml
+      - name: Make LCOV report
+        shell: bash
+        working-directory: /usr/src/app
+        run: coverage lcov
 
-      - name: Upload the coverage report
-        uses: actions/upload-artifact@v3
+      - name: Coveralls Upload
+        uses: coverallsapp/github-action@master
         with:
-          name: pytest-coverage.log
-          path: /usr/src/app/pytest-coverage.log
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: /usr/src/app/coverage.lcov
 
-      - name: Test Coverage
-        uses: MishaKav/pytest-coverage-comment@main
-        with:
-          junitxml-path: /usr/src/app/pytest_coverage.xml
+#      - name: Upload the coverage report
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: pytest_coverage.xml
+#          path: /usr/src/app/pytest_coverage.xml
+#
+#      - name: Upload the coverage report
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: pytest-coverage.log
+#          path: /usr/src/app/pytest-coverage.log
+#
+#      - name: Test Coverage
+#        uses: MishaKav/pytest-coverage-comment@main
+#        with:
+#          junitxml-path: /usr/src/app/pytest_coverage.xml
