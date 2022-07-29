@@ -1,6 +1,6 @@
 # Waiting Time Analysis of Activity Transitions
 
-![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/main.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/waiting-time-analysis/badge.svg?branch=master)](https://coveralls.io/github/AutomatedProcessImprovement/waiting-time-analysis?branch=master)
+![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/main.yml/badge.svg)
 
 A tool to identify waste in a business process from an event log.
 
