@@ -34,7 +34,13 @@ class TransitionsReport:
     process_cte: float
     cte_impact: CTEImpactAnalysis
 
+    # Per case data
+
+    per_case_wt: pd.DataFrame
+
     def __init__(self, transitions_report: pd.DataFrame, log: pd.DataFrame, log_ids: EventLogIDs):
+
+        self.log = log
 
         self.transitions_report = transitions_report.rename(columns={'destination_activity': 'target_activity',
                                                                      'destination_resource': 'target_resource'})
@@ -65,6 +71,27 @@ class TransitionsReport:
         # Regroup the entries in the report
 
         self.report = self.__regroup_report(log_ids)
+
+        # Per case data
+
+        self.__add_per_case_data(log, log_ids)
+
+    def __add_per_case_data(self, log: pd.DataFrame, log_ids: EventLogIDs):
+        per_case_wt = pd.DataFrame(columns=[log_ids.case, log_ids.wt_total, log_ids.pt_total, log_ids.cte_impact])
+
+        for (case_id, case_log) in log.groupby(by=[log_ids.case]):
+            case_pt = (case_log[log_ids.end_time] - case_log[log_ids.start_time]).sum()
+            case_wt = case_log[log_ids.wt_total].sum()
+            case_cte = case_pt / (case_pt + case_wt)
+
+            per_case_wt = pd.concat([per_case_wt, pd.DataFrame({
+                log_ids.case: [case_id],
+                log_ids.wt_total: [case_wt.total_seconds()],
+                log_ids.pt_total: [case_pt.total_seconds()],
+                log_ids.cte_impact: [case_cte]
+            })], ignore_index=True)
+
+        self.per_case_wt = per_case_wt
 
     def __regroup_report(self, log_ids) -> List[Dict[str, Any]]:
         new_report = []
@@ -132,5 +159,6 @@ class TransitionsReport:
                 'process_cte': self.process_cte,
                 'cte_impact': self.cte_impact.to_dict(),
                 'report': self.report,
+                'per_case_wt': self.per_case_wt.to_dict(orient='records'),
             }
             f.write(json.dumps(data))

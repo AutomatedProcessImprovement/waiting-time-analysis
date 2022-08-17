@@ -30,6 +30,8 @@ BATCH_INSTANCE_ID_KEY = 'batch_instance_id'
 
 CTE_IMPACT_KEY = 'cte_impact'
 
+PROCESSING_TIME_TOTAL_KEY = 'pt_total'
+
 GRANULARITY_MINUTES = 15
 
 
@@ -45,6 +47,7 @@ class EventLogIDs(batch_processing_analysis_EventLogIDs):
     wt_extraneous: str = WAITING_TIME_EXTRANEOUS_KEY
     cte_impact: str = CTE_IMPACT_KEY
     transition_source_index: str = TRANSITION_COLUMN_KEY
+    pt_total: str = PROCESSING_TIME_TOTAL_KEY
 
 
 default_log_ids = EventLogIDs(

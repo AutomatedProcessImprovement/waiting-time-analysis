@@ -2,7 +2,6 @@ from pathlib import Path
 
 import click
 
-from wta.cte_impact import CTEImpactAnalysis
 from wta.main import run
 from wta.transitions_report import TransitionsReport
 

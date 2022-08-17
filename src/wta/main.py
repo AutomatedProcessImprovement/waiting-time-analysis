@@ -52,7 +52,7 @@ def run(log_path: Path,
 
     parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
     transitions_data = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
-                                                       calendar=calendar)
+                                                     calendar=calendar)
 
     transitions_report = TransitionsReport(transitions_data, log, log_ids)
 
