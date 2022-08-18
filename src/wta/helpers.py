@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
@@ -48,6 +49,35 @@ class EventLogIDs(batch_processing_analysis_EventLogIDs):
     cte_impact: str = CTE_IMPACT_KEY
     transition_source_index: str = TRANSITION_COLUMN_KEY
     pt_total: str = PROCESSING_TIME_TOTAL_KEY
+
+    @staticmethod
+    def from_json(json_str: str) -> 'EventLogIDs':
+        """
+        Creates an EventLogIDs instance from a JSON string.
+
+        JSON with the mapping of for log columns in the following format:
+        {
+            "case": "case:concept:name",
+            "activity": "concept:name",
+            "resource": "org:resource",
+            "start_timestamp": "start_timestamp",
+            "end_timestamp": "time:timestamp",
+        }
+
+        All other keys would be ignored.
+        """
+        mapping = json.loads(json_str)
+        return EventLogIDs.from_dict(mapping)
+
+    @staticmethod
+    def from_dict(mapping: dict) -> 'EventLogIDs':
+        log_ids = default_log_ids
+        log_ids.case = mapping.get('case', log_ids.case)
+        log_ids.activity = mapping.get('activity', log_ids.activity)
+        log_ids.resource = mapping.get('resource', log_ids.resource)
+        log_ids.start_time = mapping.get('start_timestamp', log_ids.start_time)
+        log_ids.end_time = mapping.get('end_timestamp', log_ids.end_time)
+        return log_ids
 
 
 default_log_ids = EventLogIDs(
