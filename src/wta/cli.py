@@ -19,8 +19,10 @@ from wta.transitions_report import TransitionsReport
 @click.option('-c', '--columns_path', default=None, type=click.Path(exists=True, path_type=Path),
               help="Path to a JSON file containing column mappings for the event log. Only the following keys" 
               "are accepted: case, activity, resource, start_timestamp, end_timestamp.")
-def main(log_path: Path, output_dir: Path, parallel: bool, columns_path: Optional[Path]):
-    log_ids = __column_mapping(columns_path)
+@click.option('-m', '--columns_json', default=None, type=str,
+              help="JSON string containing column mappings for the event log.")
+def main(log_path: Path, output_dir: Path, parallel: bool, columns_path: Optional[Path], columns_json: Optional[str]):
+    log_ids = __column_mapping(columns_path, columns_json)
 
     result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
 
@@ -39,13 +41,15 @@ def main(log_path: Path, output_dir: Path, parallel: bool, columns_path: Optiona
         result.to_json(json_path)
 
 
-def __column_mapping(columns_path: Optional[Path]) -> Optional[EventLogIDs]:
+def __column_mapping(columns_path: Optional[Path], columns_json: Optional[str]) -> Optional[EventLogIDs]:
     log_ids: Optional[EventLogIDs] = None
 
     if columns_path is not None:
         with columns_path.open('r') as f:
             data = json.load(f)
             log_ids = EventLogIDs.from_dict(data)
+    elif columns_json is not None:
+        log_ids = EventLogIDs.from_json(columns_json)
 
     return log_ids
 
