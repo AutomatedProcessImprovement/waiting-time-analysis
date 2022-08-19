@@ -84,11 +84,14 @@ class TransitionsReport:
             case_wt = case_log[log_ids.wt_total].sum()
             case_cte = case_pt / (case_pt + case_wt)
 
+            # NOTE: we deliberately don't use log_ids for keys below, because the downstream backend service parses
+            # the JSON and expects the keys to be well known before. log_ids is used for only accessing data in the log.
+
             per_case_wt = pd.concat([per_case_wt, pd.DataFrame({
-                log_ids.case: [case_id],
-                log_ids.wt_total: [case_wt.total_seconds()],
-                log_ids.pt_total: [case_pt.total_seconds()],
-                log_ids.cte_impact: [case_cte]
+                'case_id': [case_id],
+                'wt_total': [case_wt.total_seconds()],
+                'pt_total': [case_pt.total_seconds()],
+                'cte_impact': [case_cte]
             })], ignore_index=True)
 
         self.per_case_wt = per_case_wt
