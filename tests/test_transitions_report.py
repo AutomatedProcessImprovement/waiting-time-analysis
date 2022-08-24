@@ -17,17 +17,17 @@ test_cases = [
          resource='Resource',
          activity='Activity',
      )},
-    # {'log_name': 'PurchasingExample.csv',
-    #  'parallel_run': True,
-    #  'batch_size': 10,
-    #  'save_report': False,
-    #  'log_ids': EventLogIDs(
-    #      start_time='start_timestamp',
-    #      end_time='time:timestamp',
-    #      case='concept:name',
-    #      resource='Resource',
-    #      activity='Activity',
-    #  )},
+    {'log_name': 'column_mapping.csv',
+     'parallel_run': False,
+     'batch_size': 10,
+     'save_report': True,
+     'log_ids': EventLogIDs(
+         start_time='Start_time',
+         end_time='Finish_time',
+         case='Contract_ID',
+         resource='Employee',
+         activity='Activity_name',
+     )},
 ]
 
 
@@ -52,7 +52,12 @@ def test_transitions_report(assets_path, test_data):
 
     # per case data check
 
-    per_case_wt = pd.DataFrame(columns=[log_ids.case, log_ids.wt_total, log_ids.pt_total, log_ids.cte_impact])
+    case_column = 'case_id'
+    wt_total_column = 'wt_total'
+    pt_total_column = 'pt_total'
+    cte_impact_column = 'cte_impact'
+
+    per_case_wt = pd.DataFrame(columns=[case_column, wt_total_column, pt_total_column, cte_impact_column])
 
     for (case_id, case_log) in report.log.groupby(by=[log_ids.case]):
         case_pt = (case_log[log_ids.end_time] - case_log[log_ids.start_time]).sum()
@@ -60,10 +65,10 @@ def test_transitions_report(assets_path, test_data):
         case_cte = case_pt / (case_pt + case_wt)
 
         per_case_wt = per_case_wt.append({
-            log_ids.case: case_id,
-            log_ids.wt_total: case_wt.total_seconds(),
-            log_ids.pt_total: case_pt.total_seconds(),
-            log_ids.cte_impact: case_cte,
+            case_column: case_id,
+            wt_total_column: case_wt.total_seconds(),
+            pt_total_column: case_pt.total_seconds(),
+            cte_impact_column: case_cte,
         }, ignore_index=True)
 
     assert ((report.per_case_wt == per_case_wt).all()).all()

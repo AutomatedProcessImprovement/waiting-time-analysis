@@ -77,7 +77,14 @@ class TransitionsReport:
         self.__add_per_case_data(log, log_ids)
 
     def __add_per_case_data(self, log: pd.DataFrame, log_ids: EventLogIDs):
-        per_case_wt = pd.DataFrame(columns=[log_ids.case, log_ids.wt_total, log_ids.pt_total, log_ids.cte_impact])
+        # NOTE: These columns shouldn't be mapped using log_ids, because the report must have an expected structure
+        # for backend to be able to parse it. Column mapping is only for accessing columns in the event log.
+        case_column = 'case_id'
+        wt_total_column = 'wt_total'
+        pt_total_column = 'pt_total'
+        cte_impact_column = 'cte_impact'
+
+        per_case_wt = pd.DataFrame(columns=[case_column, wt_total_column, pt_total_column, cte_impact_column])
 
         for (case_id, case_log) in log.groupby(by=[log_ids.case]):
             case_pt = (case_log[log_ids.end_time] - case_log[log_ids.start_time]).sum()
@@ -88,10 +95,10 @@ class TransitionsReport:
             # the JSON and expects the keys to be well known before. log_ids is used for only accessing data in the log.
 
             per_case_wt = pd.concat([per_case_wt, pd.DataFrame({
-                'case_id': [case_id],
-                'wt_total': [case_wt.total_seconds()],
-                'pt_total': [case_pt.total_seconds()],
-                'cte_impact': [case_cte]
+                case_column: [case_id],
+                wt_total_column: [case_wt.total_seconds()],
+                pt_total_column: [case_pt.total_seconds()],
+                cte_impact_column: [case_cte]
             })], ignore_index=True)
 
         self.per_case_wt = per_case_wt
