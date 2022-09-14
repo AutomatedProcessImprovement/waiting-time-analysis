@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple
 import pandas as pd
 
 from wta import log_ids_non_nil, EventLogIDs
-from wta.calendar.intervals import Interval
+from wta.calendars.intervals import Interval
 from wta.waiting_time.prioritization_and_contention import detect_contention_and_prioritization_intervals
 from wta.waiting_time.resource_unavailability import detect_unavailability_intervals
 

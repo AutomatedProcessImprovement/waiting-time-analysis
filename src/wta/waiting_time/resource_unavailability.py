@@ -3,9 +3,9 @@ from typing import List, Optional
 
 import pandas as pd
 from wta import log_ids_non_nil, EventLogIDs
-from wta.calendar import calendar
-from wta.calendar.calendar import UNDIFFERENTIATED_RESOURCE_POOL_KEY
-from wta.calendar.intervals import pd_interval_to_interval, Interval, subtract_intervals
+from wta.calendars import calendars
+from wta.calendars.calendars import UNDIFFERENTIATED_RESOURCE_POOL_KEY
+from wta.calendars.intervals import pd_interval_to_interval, Interval, subtract_intervals
 
 
 def other_processing_events_during_waiting_time_of_event(
@@ -110,7 +110,7 @@ def detect_unavailability_intervals(
 
     non_working_intervals = []
     if enabled_time < start_time:
-        overall_work_intervals = calendar.resource_working_hours_as_intervals(resource, log_calendar)
+        overall_work_intervals = calendars.resource_working_hours_as_intervals(resource, log_calendar)
         current_instant = enabled_time
         while current_instant < start_time:
             next_instant = None

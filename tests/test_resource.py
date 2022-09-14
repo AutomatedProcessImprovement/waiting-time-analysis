@@ -1,7 +1,7 @@
 import pandas as pd
 
 import wta.helpers
-from wta.calendar.intervals import pd_interval_to_interval
+from wta.calendars.intervals import pd_interval_to_interval
 from wta.waiting_time.resource_unavailability import non_processing_intervals
 
 

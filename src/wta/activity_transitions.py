@@ -20,7 +20,7 @@ def identify(
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
         calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
-    from wta.calendar.calendar import make as make_calendar
+    from wta.calendars.calendars import make as make_calendar
 
     click.echo(f'Parallel run: {parallel_run}')
 

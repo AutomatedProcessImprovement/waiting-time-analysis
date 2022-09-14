@@ -4,7 +4,7 @@ import pandas as pd
 from bpdfr_simulation_engine.resource_calendar import CalendarFactory
 
 from wta.helpers import GRANULARITY_MINUTES, log_ids_non_nil, EventLogIDs
-from wta.calendar.intervals import Interval, prosimos_interval_to_interval
+from wta.calendars.intervals import Interval, prosimos_interval_to_interval
 
 UNDIFFERENTIATED_RESOURCE_POOL_KEY = "undifferentiated_resource_pool"
 
