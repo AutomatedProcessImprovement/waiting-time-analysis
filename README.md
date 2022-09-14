@@ -2,7 +2,17 @@
 
 ![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/main.yml/badge.svg)
 
-A tool to identify waste in a business process from an event log.
+Implementation of the technique presented in the paper "*Why am I Waiting? Data-Driven Analysis of Waiting Times in Business Processes*", by
+Katsiaryna Lashkevich, Fredrik Milani, David Chapela-Campa, Ihar Suvorau and Marlon Dumas.
+
+The technique takes as input an event log, in csv format wherein each row represents the execution of an activity (with start and end 
+timestamps), and produces a report with the waiting time of each activity transition (e.g. from activity A to activity B) classified 
+into five different categories.
+- Waiting time due to **batch processing**: the activity instance is waiting until a set of instances of the same activity are accumulated and executed together.
+- Waiting time due to **resource contention**: the resource that has to perform this activity is busy processing another activity.
+- Waiting time due to **prioritization**: the resource that has to perform this activity is busy because they prioritized another activity that was supposed to be executed later.
+- Waiting time due to **resource unavailability**: the resource is not working at that specific moment (e.g. non working weekend).
+- Waiting time due to **extraneous factors**: the activity instance waits because of causes unrelated with the available data (e.g. the resource is busy working in another project, or the activity has to wait for an external event to happen).
 
 ## Installation
 
