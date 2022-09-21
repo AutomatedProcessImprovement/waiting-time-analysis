@@ -65,7 +65,3 @@ For contributions, please install `pre-commit` to test the code before committin
 $ pip install pre-commit
 $ pre-commit install
 ```
-
-## References
-
-- [Waste Identification from Event Logs](https://comserv.cs.ut.ee/ati_thesis/datasheet.php?id=72411&year=2021) by Shefali Ajit Sharma, [University of Tartu](https://www.ut.ee/en), 2021
