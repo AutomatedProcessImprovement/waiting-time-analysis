@@ -1,4 +1,5 @@
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
@@ -185,7 +186,12 @@ def print_section_boundaries(title: Optional[str] = None):
             else:
                 click.echo(func.__name__)
             click.echo('-' * 80)
+
+            start = time.time()
             result = func(*args, **kwargs)
+            end = time.time()
+            click.echo(f'Elapsed time: {end - start} seconds')
+
             click.echo('-' * 80)
             return result
 
@@ -202,7 +208,7 @@ def convert_timestamp_columns_to_datetime(
     """Converts the timestamp columns of the event log to datetime."""
 
     if not time_columns:
-        time_columns = [log_ids.start_time, log_ids.end_time, log_ids.enabled_time]
+        time_columns = [log_ids.start_time, log_ids.end_time, log_ids.enabled_time, log_ids.batch_instance_enabled]
     for column in time_columns:
         if column in event_log.columns:
             event_log[column] = pd.to_datetime(event_log[column], utc=utc)

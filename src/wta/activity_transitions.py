@@ -31,49 +31,67 @@ def identify(
     else:
         log_calendar = calendar
 
-    log_grouped = log.groupby(by=log_ids.case)
-    all_items = []
     if parallel_run:
-        n_cores = multiprocessing.cpu_count() - 1
-        handles = []
-        with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
-            for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
-                case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
-                handle = executor.submit(__identify_transitions_per_case_and_make_report,
-                                         case,
-                                         parallel_activities=parallel_activities,
-                                         case_id=case_id,
-                                         log_calendar=log_calendar,
-                                         log=log,
-                                         log_ids=log_ids)
-                handles.append(handle)
-
-        for h in tqdm(handles, desc='Waiting for tasks to finish'):
-            done = h.done()
-            result = h.result()
-            if done and not result.empty:
-                all_items.append(result)
+        all_items = __multiprocess_run(log, log_ids, log_calendar, parallel_activities)
     else:
-        for (case_id, case) in tqdm(log_grouped, desc='Processing cases'):
-            case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
-            result = __identify_transitions_per_case_and_make_report(case,
-                                                                     parallel_activities=parallel_activities,
-                                                                     case_id=case_id,
-                                                                     log_calendar=log_calendar,
-                                                                     log=log,
-                                                                     log_ids=log_ids)
-            if result is not None:
-                all_items.append(result)
+        all_items = __sequential_run(log, log_ids, log_calendar, parallel_activities)
 
     if len(all_items) == 0:
         return None
 
-    result: pd.DataFrame = __join_per_case_items(all_items, log_ids=log_ids)
+    result = __join_per_case_items(all_items, log_ids=log_ids)
 
     if result is not None:
         result['wt_total_seconds'] = result[log_ids.wt_total] / np.timedelta64(1, 's')
 
     return result
+
+
+def __sequential_run(log, log_ids, calendar, parallel_activities):
+    results = []
+    log_grouped = log.groupby(by=log_ids.case)
+
+    for (case_id, case) in log_grouped:
+        case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
+        result = __identify_transitions_per_case_and_make_report(
+            case,
+            parallel_activities=parallel_activities,
+            case_id=case_id,
+            log_calendar=calendar,
+            log=log,
+            log_ids=log_ids)
+
+        if result is not None:
+            results.append(result)
+
+    return results
+
+
+def __multiprocess_run(log, log_ids, calendar, parallel_activities):
+    all_items = []
+    n_cores = multiprocessing.cpu_count() - 1
+    handles = []
+    log_grouped = log.groupby(by=log_ids.case)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=n_cores) as executor:
+        for (case_id, case) in tqdm(log_grouped, desc='Submitting tasks for concurrent execution'):
+            case = case.sort_values(by=[log_ids.end_time, log_ids.start_time])
+            handle = executor.submit(__identify_transitions_per_case_and_make_report,
+                                     case,
+                                     parallel_activities=parallel_activities,
+                                     case_id=case_id,
+                                     log_calendar=calendar,
+                                     log=log,
+                                     log_ids=log_ids)
+            handles.append(handle)
+
+    for h in tqdm(handles, desc='Waiting for tasks to finish'):
+        done = h.done()
+        result = h.result()
+        if done and not result.empty:
+            all_items.append(result)
+
+    return all_items
 
 
 def __identify_transitions_per_case_and_make_report(case: pd.DataFrame, **kwargs) -> pd.DataFrame:

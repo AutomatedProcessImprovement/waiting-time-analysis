@@ -17,12 +17,12 @@ def run(log_path: Path,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None,
-        batch_size: int = BATCH_MIN_SIZE) -> TransitionsReport:
+        batch_size: int = BATCH_MIN_SIZE,
+        skip_batching: bool = False) -> TransitionsReport:
     """
     Entry point for the project. It starts the main analysis which identifies activity transitions, and then uses them
     to analyze different types of waiting time.
     """
-
     log_ids = log_ids_non_nil(log_ids)
 
     log = read_csv(log_path, log_ids=log_ids)
@@ -40,19 +40,22 @@ def run(log_path: Path,
     log.sort_values(by=[log_ids.end_time, log_ids.start_time, log_ids.activity], inplace=True)
 
     # taking batch creation time from the batch analysis
-    log = batching.add_columns_from_batch_analysis(
-        log,
-        column_names=(log_ids.batch_instance_enabled, log_ids.batch_id),
-        log_ids=log_ids,
-        batch_size=batch_size)
-    # NOTE: Batching analysis package adds enabled_timestamp column to the log that is used later
+    if not skip_batching:
+        # NOTE: Batching analysis package adds enabled_timestamp column to the log that is used later
+        log = batching.add_columns_from_batch_analysis(
+            log,
+            column_names=(log_ids.batch_instance_enabled, log_ids.batch_id),
+            log_ids=log_ids,
+            batch_size=batch_size)
+    else:
+        click.echo('Skipping batching analysis')
 
     # total waiting time
     log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
     parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
-    transitions_data = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
-                                                     calendar=calendar)
+    transitions_data = activity_transitions.identify(
+        log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar)
 
     transitions_report = TransitionsReport(transitions_data, log, log_ids)
 

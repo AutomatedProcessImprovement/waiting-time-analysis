@@ -14,17 +14,26 @@ from wta.transitions_report import TransitionsReport
               help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
-@click.option('-p', '--parallel', is_flag=True, default=True, show_default=True,
+@click.option('-p', '--parallel/--no-parallel', is_flag=True, default=True, show_default=True,
               help='Run the tool using all available cores in parallel.')
 @click.option('-c', '--columns_path', default=None, type=click.Path(exists=True, path_type=Path),
-              help="Path to a JSON file containing column mappings for the event log. Only the following keys" 
-              "are accepted: case, activity, resource, start_timestamp, end_timestamp.")
+              help="Path to a JSON file containing column mappings for the event log. Only the following keys"
+                   "are accepted: case, activity, resource, start_timestamp, end_timestamp.")
 @click.option('-m', '--columns_json', default=None, type=str,
               help="JSON string containing column mappings for the event log.")
-def main(log_path: Path, output_dir: Path, parallel: bool, columns_path: Optional[Path], columns_json: Optional[str]):
+@click.option('-b', '--batching/--no-batching', is_flag=True, default=True, show_default=True,
+              help='Run the batching analysis or skip it.')
+def main(
+        log_path: Path,
+        output_dir: Path,
+        parallel: bool,
+        columns_path: Optional[Path],
+        columns_json: Optional[str],
+        batching: bool):
     log_ids = __column_mapping(columns_path, columns_json)
 
-    result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
+    result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids,
+                                    skip_batching=not batching)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'
