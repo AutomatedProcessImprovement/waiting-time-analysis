@@ -215,12 +215,12 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     # assert
     if expected_data is not None:
-        expected_data[log_ids.wt_total] = pd.to_timedelta(expected_data[log_ids.wt_total])
-        expected_data[log_ids.wt_batching] = pd.to_timedelta(expected_data[log_ids.wt_batching])
-        expected_data[log_ids.wt_contention] = pd.to_timedelta(expected_data[log_ids.wt_contention])
-        expected_data[log_ids.wt_prioritization] = pd.to_timedelta(expected_data[log_ids.wt_prioritization])
-        expected_data[log_ids.wt_unavailability] = pd.to_timedelta(expected_data[log_ids.wt_unavailability])
-        expected_data[log_ids.wt_extraneous] = pd.to_timedelta(expected_data[log_ids.wt_extraneous])
+        expected_data[log_ids.wt_total] = pd.to_timedelta(expected_data[log_ids.wt_total]).dt.total_seconds()
+        expected_data[log_ids.wt_batching] = pd.to_timedelta(expected_data[log_ids.wt_batching]).dt.total_seconds()
+        expected_data[log_ids.wt_contention] = pd.to_timedelta(expected_data[log_ids.wt_contention]).dt.total_seconds()
+        expected_data[log_ids.wt_prioritization] = pd.to_timedelta(expected_data[log_ids.wt_prioritization]).dt.total_seconds()
+        expected_data[log_ids.wt_unavailability] = pd.to_timedelta(expected_data[log_ids.wt_unavailability]).dt.total_seconds()
+        expected_data[log_ids.wt_extraneous] = pd.to_timedelta(expected_data[log_ids.wt_extraneous]).dt.total_seconds()
 
         report.transitions_report['cases'] = report.transitions_report['cases'].astype(object)
         report.transitions_report['cases'] = expected_data['cases'].astype(object)

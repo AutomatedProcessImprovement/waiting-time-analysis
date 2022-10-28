@@ -5,7 +5,6 @@ from typing import Optional
 
 import pandas as pd
 
-from wta import get_total_processing_time
 from wta.helpers import log_ids_non_nil, EventLogIDs
 
 
@@ -44,22 +43,22 @@ def calculate_cte_impact(
         total_waiting_time: float,
         log_ids: Optional[EventLogIDs] = None) -> CTEImpactAnalysis:
     """Calculates impact of waiting time on cycle time efficiency."""
-
     log_ids = log_ids_non_nil(log_ids)
 
-    total_wt_batching: pd.Timedelta = report[log_ids.wt_batching].sum()
-    total_wt_prioritization: pd.Timedelta = report[log_ids.wt_prioritization].sum()
-    total_wt_contention: pd.Timedelta = report[log_ids.wt_contention].sum()
-    total_wt_unavailability: pd.Timedelta = report[log_ids.wt_unavailability].sum()
-    total_wt_extraneous: pd.Timedelta = report[log_ids.wt_extraneous].sum()
+    # NOTE: all times should be in seconds, not pd.Timedelta objects
+    total_wt_batching = report[log_ids.wt_batching].sum()
+    total_wt_prioritization = report[log_ids.wt_prioritization].sum()
+    total_wt_contention = report[log_ids.wt_contention].sum()
+    total_wt_unavailability = report[log_ids.wt_unavailability].sum()
+    total_wt_extraneous = report[log_ids.wt_extraneous].sum()
 
-    batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching.total_seconds())
-    contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention.total_seconds())
+    batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching)
+    contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention)
     prioritization_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_prioritization.total_seconds())
+            total_processing_time + total_waiting_time - total_wt_prioritization)
     unavailability_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_unavailability.total_seconds())
-    extraneous_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_extraneous.total_seconds())
+            total_processing_time + total_waiting_time - total_wt_unavailability)
+    extraneous_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_extraneous)
 
     result = CTEImpactAnalysis(
         batching_impact=batching_impact,

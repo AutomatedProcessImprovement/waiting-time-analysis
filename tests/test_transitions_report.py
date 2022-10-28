@@ -48,7 +48,7 @@ def test_transitions_report(assets_path, test_data):
     assert report.num_activity_instances == len(log)
     assert report.num_transitions == len(report.report)
     assert report.num_transition_instances == report.transitions_report['frequency'].sum()
-    assert report.total_wt == report.transitions_report[log_ids.wt_total].sum().total_seconds()
+    assert report.total_wt == report.transitions_report[log_ids.wt_total].sum()
 
     # per case data check
 

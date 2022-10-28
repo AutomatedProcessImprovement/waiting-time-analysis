@@ -4,7 +4,8 @@ from typing import List, Dict, Any
 
 import pandas as pd
 
-from wta import EventLogIDs, get_total_processing_time, CTEImpactAnalysis, calculate_cte_impact
+from wta import EventLogIDs, get_total_processing_time, CTEImpactAnalysis, calculate_cte_impact, \
+    print_section_boundaries
 
 
 class TransitionsReport:
@@ -56,16 +57,40 @@ class TransitionsReport:
 
         # Waiting time
 
-        self.total_wt = self.transitions_report[log_ids.wt_total].sum().total_seconds()
-        self.total_batching_wt = self.transitions_report[log_ids.wt_batching].sum().total_seconds()
-        self.total_prioritization_wt = self.transitions_report[log_ids.wt_prioritization].sum().total_seconds()
-        self.total_contention_wt = self.transitions_report[log_ids.wt_contention].sum().total_seconds()
-        self.total_unavailability_wt = self.transitions_report[log_ids.wt_unavailability].sum().total_seconds()
-        self.total_extraneous_wt = self.transitions_report[log_ids.wt_extraneous].sum().total_seconds()
+        # NOTE: to avoid "overflow in timedelta operation", we convert times to seconds before summing up to convert
+        #  pd.Timedelta objects to floats that don't have that limit.
+        self.transitions_report[log_ids.wt_total] = \
+            self.transitions_report[log_ids.wt_total].dt.total_seconds()
+        self.transitions_report[log_ids.wt_batching] = \
+            self.transitions_report[log_ids.wt_batching].dt.total_seconds()
+        self.transitions_report[log_ids.wt_prioritization] = \
+            self.transitions_report[log_ids.wt_prioritization].dt.total_seconds()
+        self.transitions_report[log_ids.wt_contention] = \
+            self.transitions_report[log_ids.wt_contention].dt.total_seconds()
+        self.transitions_report[log_ids.wt_unavailability] = \
+            self.transitions_report[log_ids.wt_unavailability].dt.total_seconds()
+        self.transitions_report[log_ids.wt_extraneous] = \
+            self.transitions_report[log_ids.wt_extraneous].dt.total_seconds()
+
+        self.total_wt = self.transitions_report[log_ids.wt_total].sum()
+        self.total_batching_wt = self.transitions_report[log_ids.wt_batching].sum()
+        self.total_prioritization_wt = self.transitions_report[log_ids.wt_prioritization].sum()
+        self.total_contention_wt = self.transitions_report[log_ids.wt_contention].sum()
+        self.total_unavailability_wt = self.transitions_report[log_ids.wt_unavailability].sum()
+        self.total_extraneous_wt = self.transitions_report[log_ids.wt_extraneous].sum()
 
         # CTE impact
 
         self.process_cte = self.total_pt / (self.total_pt + self.total_wt)
+
+        # Converting timedelta to seconds to avoid overflow error during summation
+        transitions_report[log_ids.wt_total] = transitions_report[log_ids.wt_total].dt.total_seconds()
+        transitions_report[log_ids.wt_batching] = transitions_report[log_ids.wt_batching].dt.total_seconds()
+        transitions_report[log_ids.wt_prioritization] = transitions_report[log_ids.wt_prioritization].dt.total_seconds()
+        transitions_report[log_ids.wt_contention] = transitions_report[log_ids.wt_contention].dt.total_seconds()
+        transitions_report[log_ids.wt_unavailability] = transitions_report[log_ids.wt_unavailability].dt.total_seconds()
+        transitions_report[log_ids.wt_extraneous] = transitions_report[log_ids.wt_extraneous].dt.total_seconds()
+
         self.cte_impact = calculate_cte_impact(transitions_report, self.total_pt, self.total_wt, log_ids=log_ids)
 
         # Regroup the entries in the report
@@ -106,12 +131,13 @@ class TransitionsReport:
     def __regroup_report(self, log_ids) -> List[Dict[str, Any]]:
         new_report = []
 
+        # NOTE: all times should be in seconds, not pd.Timedelta objects
         for (activities, report) in self.transitions_report.groupby(by=['source_activity', 'target_activity']):
             wt_by_resource = []
 
             for (resources, resources_report) in report.groupby(by=['source_resource', 'target_resource']):
                 cte_impact_total = \
-                    self.total_pt / (self.total_pt + self.total_wt - resources_report[log_ids.wt_total].sum().total_seconds())
+                    self.total_pt / (self.total_pt + self.total_wt - resources_report[log_ids.wt_total].sum())
                 cte_impact = calculate_cte_impact(resources_report, self.total_pt, self.total_wt, log_ids=log_ids)
 
                 wt_by_resource.append({
@@ -119,18 +145,18 @@ class TransitionsReport:
                     'target_resource': resources[1],
                     'case_freq': len(resources_report['cases'].values[0].split(',')) / self.num_cases,
                     'total_freq': resources_report['frequency'].sum(),
-                    'total_wt': resources_report[log_ids.wt_total].sum().total_seconds(),
-                    'batching_wt': resources_report[log_ids.wt_batching].sum().total_seconds(),
-                    'prioritization_wt': resources_report[log_ids.wt_prioritization].sum().total_seconds(),
-                    'contention_wt': resources_report[log_ids.wt_contention].sum().total_seconds(),
-                    'unavailability_wt': resources_report[log_ids.wt_unavailability].sum().total_seconds(),
-                    'extraneous_wt': resources_report[log_ids.wt_extraneous].sum().total_seconds(),
+                    'total_wt': resources_report[log_ids.wt_total].sum(),
+                    'batching_wt': resources_report[log_ids.wt_batching].sum(),
+                    'prioritization_wt': resources_report[log_ids.wt_prioritization].sum(),
+                    'contention_wt': resources_report[log_ids.wt_contention].sum(),
+                    'unavailability_wt': resources_report[log_ids.wt_unavailability].sum(),
+                    'extraneous_wt': resources_report[log_ids.wt_extraneous].sum(),
                     'cte_impact_total_wt': cte_impact_total,
                     'cte_impact': cte_impact.to_dict(),
                 })
 
             cte_impact_total = \
-                self.total_pt / (self.total_pt + self.total_wt - report[log_ids.wt_total].sum().total_seconds())
+                self.total_pt / (self.total_pt + self.total_wt - report[log_ids.wt_total].sum())
             cte_impact = calculate_cte_impact(report, self.total_pt, self.total_wt, log_ids=log_ids)
 
             new_report.append({
@@ -138,12 +164,12 @@ class TransitionsReport:
                 'target_activity': activities[1],
                 'case_freq': len(report['cases'].values[0].split(',')) / self.num_cases,
                 'total_freq': report['frequency'].sum(),
-                'total_wt': report[log_ids.wt_total].sum().total_seconds(),
-                'batching_wt': report[log_ids.wt_batching].sum().total_seconds(),
-                'prioritization_wt': report[log_ids.wt_prioritization].sum().total_seconds(),
-                'contention_wt': report[log_ids.wt_contention].sum().total_seconds(),
-                'unavailability_wt': report[log_ids.wt_unavailability].sum().total_seconds(),
-                'extraneous_wt': report[log_ids.wt_extraneous].sum().total_seconds(),
+                'total_wt': report[log_ids.wt_total].sum(),
+                'batching_wt': report[log_ids.wt_batching].sum(),
+                'prioritization_wt': report[log_ids.wt_prioritization].sum(),
+                'contention_wt': report[log_ids.wt_contention].sum(),
+                'unavailability_wt': report[log_ids.wt_unavailability].sum(),
+                'extraneous_wt': report[log_ids.wt_extraneous].sum(),
                 'cte_impact_total_wt': cte_impact_total,
                 'cte_impact': cte_impact.to_dict(),
                 'wt_by_resource': wt_by_resource,
