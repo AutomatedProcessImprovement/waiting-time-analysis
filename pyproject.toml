@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "wta"
-version = "1.1.0"
+version = "1.2.0"
 description = "Waiting time analysis of activity transitions in event logs"
 authors = ["Ihar Suvorau <ihar.suvorau@gmail.com>", "David Chapela de la Campa <david.chapela@ut.ee>"]
 license = "Apache-2.0"
