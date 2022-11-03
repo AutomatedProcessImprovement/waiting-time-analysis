@@ -202,9 +202,7 @@ def test_handoffs_for_icpm_conference(assets_path, test_data):
 
     calendar = test_data['calendar'] if 'calendar' in test_data else None
 
-    batch_size = test_data['batch_size']
-
-    report: TransitionsReport = run(log_path, parallel, log_ids=log_ids, calendar=calendar, batch_size=batch_size)
+    report: TransitionsReport = run(log_path, parallel, log_ids=log_ids, calendar=calendar)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'

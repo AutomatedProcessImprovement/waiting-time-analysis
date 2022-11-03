@@ -8,9 +8,7 @@ import pytest
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, EventLogIDs
 from wta.helpers import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_TOTAL_KEY, \
-    BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY, read_csv, add_enabled_timestamp
-from wta.main import _batch_discovery
-from wta.waiting_time import batching
+    read_csv, add_enabled_timestamp
 
 
 @pytest.fixture(scope='module')

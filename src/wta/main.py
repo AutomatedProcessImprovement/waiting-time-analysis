@@ -9,7 +9,6 @@ from wta import log_ids_non_nil, activity_transitions, EventLogIDs, read_csv, \
     parallel_activities_with_heuristic_oracle, add_enabled_timestamp, compute_batch_activation_times, \
     print_section_boundaries
 from wta.transitions_report import TransitionsReport
-from wta.waiting_time.batching import BATCH_MIN_SIZE
 
 REPORT_INDEX_COLUMNS = ['source_activity', 'source_resource', 'destination_activity', 'destination_resource']
 
@@ -18,9 +17,7 @@ def run(log_path: Path,
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
-        calendar: Optional[Dict] = None,
-        batch_size: int = BATCH_MIN_SIZE,
-        skip_batching: bool = False) -> TransitionsReport:
+        calendar: Optional[Dict] = None) -> TransitionsReport:
     """
     Entry point for the project. It starts the main analysis which identifies activity transitions, and then uses them
     to analyze different types of waiting time.
@@ -44,20 +41,6 @@ def run(log_path: Path,
     add_enabled_timestamp(log, log_ids)
 
     log = _batch_discovery(log, log_ids)
-
-    # # taking batch creation time from the batch analysis
-    # if not skip_batching:
-    #     log = batching.add_columns_from_batch_analysis(
-    #         log,
-    #         column_names=(log_ids.batch_instance_enabled, log_ids.batch_id),
-    #         log_ids=log_ids,
-    #         batch_size=batch_size)
-    # else:
-    #     click.echo('Skipping batching analysis')
-    #     log = read_csv(Path('log_after_batching.csv'), log_ids=log_ids)
-    #
-    # with open('log_after_batching.csv', 'w') as f:
-    #     log.to_csv(f)
 
     # total waiting time
     log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]

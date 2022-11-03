@@ -32,8 +32,7 @@ def main(
         batching: bool):
     log_ids = __column_mapping(columns_path, columns_json)
 
-    result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids,
-                                    skip_batching=not batching)
+    result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     extension_suffix = '.csv'

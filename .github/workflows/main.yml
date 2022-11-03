@@ -47,16 +47,6 @@ jobs:
     needs: [ docker-build ]
     container: nokal/waiting-time-analysis:latest
     steps:
-      - name: Check R installation
-        shell: bash
-        run: |
-          Rscript --version
-
-      - name: Set up Rscript bin path
-        shell: bash
-        run: |
-          echo "RSCRIPT_BIN_PATH=`which Rscript`" >> $GITHUB_ENV
-
       - name: Smoke Test
         shell: bash
         working-directory: /usr/src/app
@@ -67,8 +57,6 @@ jobs:
       - name: Test the build
         shell: bash
         working-directory: /usr/src/app
-        env:
-          RSCRIPT_BIN_PATH: ${{ env.RSCRIPT_BIN_PATH }}
         run: |
           source venv/bin/activate
           pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests

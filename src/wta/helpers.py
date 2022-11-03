@@ -7,7 +7,6 @@ from typing import Optional, Dict, List, Tuple
 import click
 import pandas as pd
 
-from batch_processing_analysis.config import EventLogIDs as batch_processing_analysis_EventLogIDs
 from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
 from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
     HeuristicsThresholds, ReEstimationMethod
@@ -38,8 +37,26 @@ GRANULARITY_MINUTES = 15
 
 
 @dataclass
-class EventLogIDs(batch_processing_analysis_EventLogIDs):
+class EventLogIDs:
     """Extended log IDs with waiting time and CTE impact keys."""
+
+    case: str = 'case_id'  # ID of the case instance of the process (trace)
+    activity: str = 'Activity'  # Name of the executed activity in this activity instance
+    start_time: str = 'start_time'  # Timestamp in which this activity instance started
+    end_time: str = 'end_time'  # Timestamp in which this activity instance ended
+    resource: str = 'Resource'  # ID of the resource that executed this activity instance
+    enabled_time: str = 'enabled_time'  # Enable time of this activity instance
+    batch_id: str = 'batch_instance_id'  # ID of the batch instance this activity instance belongs to, if any
+    batch_type: str = 'batch_instance_type'  # Type of the batch instance this activity instance belongs to, if any
+    batch_pt: str = 'batch_pt'  # Batch case processing time: time in which there is an activity of the batch case being processed
+    batch_wt: str = 'batch_wt'  # Batch case waiting time: time in which there are no activities of the batch case being processed
+    batch_total_wt: str = 'batch_total_wt'  # Batch case waiting time: time since the batch case enablement until its start
+    batch_creation_wt: str = 'batch_creation_wt'  # Batch case creation wt: time since batch case enablement until batch instance creation
+    batch_ready_wt: str = 'batch_ready_wt'  # Batch instance ready waiting time: time since the batch instance is created until its start
+    batch_other_wt: str = 'batch_other_wt'  # Batch case other waiting time: time since the batch instance start until the batch case start
+    batch_case_enabled: str = 'batch_case_enabled'  # Enablement time of the batch case
+    batch_instance_enabled: str = 'batch_instance_enabled'  # Enablement time of the batch instance (batch is created and ready)
+    batch_start: str = 'batch_start_time'  # First start time in the batch instance (batch processing starts)
 
     wt_total: str = WAITING_TIME_TOTAL_KEY
     wt_batching: str = WAITING_TIME_BATCHING_KEY
