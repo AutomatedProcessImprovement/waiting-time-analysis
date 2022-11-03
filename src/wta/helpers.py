@@ -154,9 +154,13 @@ def timezone_aware_subtraction(df1: pd.DataFrame, df2: pd.DataFrame,
     return df1[df1_col_name].dt.tz_convert(tz='UTC') - df2[df2_col_name].dt.tz_convert(tz='UTC')
 
 
-def add_enabled_timestamp(log: pd.DataFrame):
-    global default_configuration
-    oracle = HeuristicsConcurrencyOracle(log, default_configuration)
+def add_enabled_timestamp(log: pd.DataFrame, log_ids: Optional[EventLogIDs] = None):
+    log_ids = log_ids_non_nil(log_ids)
+    configuration = Configuration(
+        log_ids=log_ids,
+        consider_start_times=True,
+    )
+    oracle = HeuristicsConcurrencyOracle(log, configuration)
     oracle.add_enabled_times(log)
 
 
@@ -230,3 +234,14 @@ def get_total_processing_time(log: pd.DataFrame, log_ids: Optional[EventLogIDs] 
     log_ids = log_ids_non_nil(log_ids)
 
     return (log[log_ids.end_time] - log[log_ids.start_time]).sum()
+
+
+def compute_batch_activation_times(event_log: pd.DataFrame, log_ids: EventLogIDs) -> pd.DataFrame:
+    event_log[log_ids.batch_instance_enabled] = pd.NaT
+    batch_events = event_log[~pd.isna(event_log[log_ids.batch_id])]
+    for (batch_key, batch_instance) in batch_events.groupby([log_ids.batch_id]):
+        event_log.loc[
+            event_log[log_ids.batch_id] == batch_key,
+            log_ids.batch_instance_enabled
+        ] = batch_instance[log_ids.enabled_time].max()
+    return event_log

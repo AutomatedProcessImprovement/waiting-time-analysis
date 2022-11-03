@@ -9,6 +9,7 @@ from estimate_start_times.config import Configuration, ConcurrencyOracleType, Re
     HeuristicsThresholds, EventLogIDs
 from wta.helpers import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_TOTAL_KEY, \
     BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY, read_csv, add_enabled_timestamp
+from wta.main import _batch_discovery
 from wta.waiting_time import batching
 
 
@@ -69,19 +70,6 @@ def config() -> Configuration:
         heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
     )
     return config
-
-
-@pytest.fixture
-def event_log(request, assets_path) -> pd.DataFrame:
-    log_path = assets_path / request.node.get_closest_marker('log_path').args[0]
-    log = read_csv(log_path)
-
-    log = batching.add_columns_from_batch_analysis(
-        log, column_names=(BATCH_INSTANCE_ENABLED_KEY, BATCH_INSTANCE_ID_KEY))
-
-    log[WAITING_TIME_TOTAL_KEY] = log[START_TIMESTAMP_KEY] - log[ENABLED_TIMESTAMP_KEY]
-
-    return log
 
 
 @pytest.fixture(params=['PurchasingExample.csv', 'Production.csv'])

@@ -24,12 +24,6 @@ def case_enabled(assets_path) -> pd.DataFrame:
     return case.sort_values(by='time:timestamp')
 
 
-@pytest.mark.log_path('BIMP_example.csv')
-def test_alpha_oracle(event_log):
-    result = wta.helpers.parallel_activities_with_alpha_oracle(event_log)
-    assert result is not None
-
-
 def test_timezone_aware_subtraction():
     df1 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 13:00+0200')]})
     df2 = pd.DataFrame({'timestamp': [pd.Timestamp('2017-02-01 14:00+0300')]})

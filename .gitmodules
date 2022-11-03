@@ -13,3 +13,6 @@
 [submodule "vendor/bama"]
 	path = vendor/bama
 	url = https://github.com/nielsmartin/bama.git
+[submodule "vendor/batch-processing-discovery"]
+	path = vendor/batch-processing-discovery
+	url = https://github.com/AutomatedProcessImprovement/batch-processing-discovery.git

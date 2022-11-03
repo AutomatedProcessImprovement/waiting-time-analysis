@@ -111,7 +111,7 @@ class TransitionsReport:
 
         per_case_wt = pd.DataFrame(columns=[case_column, wt_total_column, pt_total_column, cte_impact_column])
 
-        for (case_id, case_log) in log.groupby(by=[log_ids.case]):
+        for (case_id, case_log) in log.groupby(by=log_ids.case):
             case_pt = (case_log[log_ids.end_time] - case_log[log_ids.start_time]).sum()
             case_wt = case_log[log_ids.wt_total].sum()
             case_cte = case_pt / (case_pt + case_wt)
