@@ -21,15 +21,12 @@ from wta.transitions_report import TransitionsReport
                    "are accepted: case, activity, resource, start_timestamp, end_timestamp.")
 @click.option('-m', '--columns_json', default=None, type=str,
               help="JSON string containing column mappings for the event log.")
-@click.option('-b', '--batching/--no-batching', is_flag=True, default=True, show_default=True,
-              help='Run the batching analysis or skip it.')
 def main(
         log_path: Path,
         output_dir: Path,
         parallel: bool,
         columns_path: Optional[Path],
-        columns_json: Optional[str],
-        batching: bool):
+        columns_json: Optional[str]):
     log_ids = __column_mapping(columns_path, columns_json)
 
     result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
