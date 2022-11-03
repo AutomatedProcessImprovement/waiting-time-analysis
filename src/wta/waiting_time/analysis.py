@@ -156,7 +156,7 @@ def __wt_durations_from_wt_intervals(
             for start, end in _intervals
         ]
 
-        _intervals = __remove_overlapping_time_from_intervals(_intervals)
+        _intervals = __remove_overlapping_time_from_intervals_non_recursive(_intervals)
 
         return _intervals
 
@@ -228,8 +228,22 @@ def __wt_durations_from_wt_intervals(
 
     wt_extraneous = wt_total - wt_batching - wt_contention - wt_prioritization - wt_unavailability
 
+    # validation
+
     assert wt_total == wt_batching + wt_contention + wt_prioritization + wt_unavailability + wt_extraneous, \
         f'WT total is not equal to the sum of its components: {wt_total} != {wt_batching} + {wt_contention} + {wt_prioritization} + {wt_unavailability} + {wt_extraneous}'
+
+    assert wt_batching <= wt_total, f'WT batching is greater than WT total: {wt_batching} > {wt_total}'
+    assert wt_contention <= wt_total, f'WT contention is greater than WT total: {wt_contention} > {wt_total}'
+    assert wt_prioritization <= wt_total, f'WT prioritization is greater than WT total: {wt_prioritization} > {wt_total}'
+    assert wt_unavailability <= wt_total, f'WT unavailability is greater than WT total: {wt_unavailability} > {wt_total}'
+    assert wt_extraneous <= wt_total, f'WT extraneous is greater than WT total: {wt_extraneous} > {wt_total}'
+
+    assert wt_batching >= pd.Timedelta(0), f'WT batching is negative: {wt_batching}'
+    assert wt_contention >= pd.Timedelta(0), f'WT contention is negative: {wt_contention}'
+    assert wt_prioritization >= pd.Timedelta(0), f'WT prioritization is negative: {wt_prioritization}'
+    assert wt_unavailability >= pd.Timedelta(0), f'WT unavailability is negative: {wt_unavailability}'
+    assert wt_extraneous >= pd.Timedelta(0), f'WT extraneous is negative: {wt_extraneous}'
 
     return WaitingTimeDurations(wt_batching, wt_contention, wt_prioritization, wt_unavailability, wt_extraneous)
 
@@ -286,23 +300,6 @@ def __subtract_a_from_intervals_b(a: pd.Interval, b: List[pd.Interval]) -> List[
     return result
 
 
-def __subtract_intervals_a_from_intervals_b(a: List[pd.Interval], b: List[pd.Interval]) -> List[pd.Interval]:
-    """Subtracts the intervals a from b."""
-
-    if len(a) == 0:
-        return b
-
-    if len(b) == 0:
-        return []
-
-    result = __subtract_a_from_intervals_b(a[0], b)
-
-    if len(a) == 1:
-        return result
-
-    return __subtract_intervals_a_from_intervals_b(a[1:], result)
-
-
 def __subtract_intervals_a_from_intervals_b_non_recursive(
         a: List[pd.Interval], b: List[pd.Interval]) -> List[pd.Interval]:
     """Subtracts the intervals a from b."""
@@ -320,22 +317,6 @@ def __subtract_intervals_a_from_intervals_b_non_recursive(
     return rest
 
 
-def __remove_overlapping_time_from_intervals(a: List[pd.Interval]) -> List[pd.Interval]:
-    """Removes overlapping time from intervals."""
-
-    if len(a) == 0:
-        return []
-
-    if len(a) == 1:
-        return a
-
-    a = sorted(a, key=lambda x: x.left)
-
-    result = __subtract_a_from_intervals_b(a[0], a[1:])
-
-    return [a[0]] + __remove_overlapping_time_from_intervals(result)
-
-
 def __remove_overlapping_time_from_intervals_non_recursive(a: List[pd.Interval]) -> List[pd.Interval]:
     """Removes overlapping time from intervals."""
 
@@ -346,16 +327,13 @@ def __remove_overlapping_time_from_intervals_non_recursive(a: List[pd.Interval])
         return a
 
     accumulator = []
-    rest = a[1:]
+    rest = a.copy()
 
-    for interval in a:
+    while len(rest) > 0:
+        interval = rest[0]
         accumulator.append(interval)
 
-        rest = sorted(rest, key=lambda x: x.left)
-        rest = __subtract_a_from_intervals_b(interval, rest)
-
-        if len(rest) == 1:
-            accumulator.append(rest[0])
+        rest = __subtract_a_from_intervals_b(interval, rest[1:])
 
     return accumulator
 

@@ -7,8 +7,8 @@ import wta.helpers
 from wta import WAITING_TIME_TOTAL_KEY
 from wta.helpers import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY
 from wta.waiting_time import batching
-from wta.waiting_time.analysis import __subtract_intervals_a_from_intervals_b, \
-    __subtract_intervals_a_from_intervals_b_non_recursive, __subtract_a_from_intervals_b
+from wta.waiting_time.analysis import __subtract_intervals_a_from_intervals_b_non_recursive, \
+    __subtract_a_from_intervals_b
 
 
 def read_event_log(log_path: Path) -> pd.DataFrame:
@@ -101,7 +101,7 @@ interval_test_data = [
 def test_analysis_subtract_a_from_intervals_b(test_case):
     a = test_case['a']
     b = test_case['b']
-    result = __subtract_intervals_a_from_intervals_b(a, b)
+    result = __subtract_intervals_a_from_intervals_b_non_recursive(a, b)
     assert result == test_case['expected']
 
 

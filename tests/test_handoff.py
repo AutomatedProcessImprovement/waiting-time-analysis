@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from wta.waiting_time.analysis import __remove_overlapping_time_from_intervals
+from wta.waiting_time.analysis import __remove_overlapping_time_from_intervals_non_recursive
 
 # Pandas intervals
 
@@ -84,5 +84,5 @@ overlapping_intervals_test_cases = [
 @pytest.mark.parametrize('test_data', overlapping_intervals_test_cases,
                          ids=map(lambda x: x['test_case_name'], overlapping_intervals_test_cases))
 def test__remove_overlapping_time_from_intervals(test_data):
-    result = __remove_overlapping_time_from_intervals(test_data['input'])
+    result = __remove_overlapping_time_from_intervals_non_recursive(test_data['input'])
     assert result == test_data['output']
