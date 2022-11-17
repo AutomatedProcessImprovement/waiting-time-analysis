@@ -126,6 +126,9 @@ class TransitionsReport:
                 cte_impact_column: [case_cte]
             })], ignore_index=True)
 
+        # Converting case_id to string to avoid JSON serialization error
+        per_case_wt[case_column] = per_case_wt[case_column].astype(str)
+
         self.per_case_wt = per_case_wt
 
     def __regroup_report(self, log_ids) -> List[Dict[str, Any]]:

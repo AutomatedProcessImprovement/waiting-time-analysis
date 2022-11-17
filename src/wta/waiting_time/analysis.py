@@ -249,6 +249,7 @@ def __wt_durations_from_wt_intervals(
 
 
 # Pandas Intervals
+# TODO: move to a separate module
 
 def __subtract_a_from_b(a: pd.Interval, b: pd.Interval) -> [pd.Interval]:
     """Subtracts the interval a from b."""

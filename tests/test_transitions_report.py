@@ -70,4 +70,10 @@ def test_transitions_report(assets_path, test_data):
             cte_impact_column: case_cte,
         }, ignore_index=True)
 
+    per_case_wt['case_id'] = per_case_wt['case_id'].astype(float)
+    # getting rid of decimal places
+    per_case_wt['case_id'] = per_case_wt['case_id'].astype(int)
+    # converting to str, the final type of case_id
+    per_case_wt['case_id'] = per_case_wt['case_id'].astype(str)
+
     assert ((report.per_case_wt == per_case_wt).all()).all()
