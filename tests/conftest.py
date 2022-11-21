@@ -61,7 +61,6 @@ def config() -> Configuration:
             enabled_time='enabled_timestamp',
             available_time='available_timestamp',
             resource='org:resource',
-            lifecycle='lifecycle:transition',
         ),
         concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
         resource_availability_type=ResourceAvailabilityType.SIMPLE,

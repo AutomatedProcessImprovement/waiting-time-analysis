@@ -10,7 +10,7 @@ from wta.transitions_report import TransitionsReport
 
 
 @click.command()
-@click.option('-l', '--log_path', default=None, required=True, type=Path,
+@click.option('-l', '--log_path', default=None, required=False, type=Path,
               help='Path to an event log in XES-format.')
 @click.option('-o', '--output_dir', default='./', show_default=True, type=Path,
               help='Path to an output directory where statistics will be saved.')
@@ -21,12 +21,20 @@ from wta.transitions_report import TransitionsReport
                    "are accepted: case, activity, resource, start_timestamp, end_timestamp.")
 @click.option('-m', '--columns_json', default=None, type=str,
               help="JSON string containing column mappings for the event log.")
+@click.option('-v', '--version', is_flag=True, default=False, show_default=True,
+              help='Print the version of the tool.')
 def main(
         log_path: Path,
         output_dir: Path,
         parallel: bool,
         columns_path: Optional[Path],
-        columns_json: Optional[str]):
+        columns_json: Optional[str],
+        version: bool):
+    if version:
+        from wta import __version__
+        click.echo(f'Waiting Time Analyzer v{__version__}')
+        return
+
     log_ids = __column_mapping(columns_path, columns_json)
 
     result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
