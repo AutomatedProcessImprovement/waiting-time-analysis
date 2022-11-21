@@ -37,7 +37,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:latest
+          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
           file: Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
