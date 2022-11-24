@@ -154,7 +154,7 @@ class TransitionsReport:
                     'contention_wt': resources_report[log_ids.wt_contention].sum(),
                     'unavailability_wt': resources_report[log_ids.wt_unavailability].sum(),
                     'extraneous_wt': resources_report[log_ids.wt_extraneous].sum(),
-                    'cte_impact_total_wt': cte_impact_total,
+                    'cte_impact_total': cte_impact_total,
                     'cte_impact': cte_impact.to_dict(),
                 })
 
@@ -173,7 +173,7 @@ class TransitionsReport:
                 'contention_wt': report[log_ids.wt_contention].sum(),
                 'unavailability_wt': report[log_ids.wt_unavailability].sum(),
                 'extraneous_wt': report[log_ids.wt_extraneous].sum(),
-                'cte_impact_total_wt': cte_impact_total,
+                'cte_impact_total': cte_impact_total,
                 'cte_impact': cte_impact.to_dict(),
                 'wt_by_resource': wt_by_resource,
             })
