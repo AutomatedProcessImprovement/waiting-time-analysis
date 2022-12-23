@@ -19,7 +19,8 @@ def identify(
         parallel_activities: Dict[str, set],
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
-        calendar: Optional[Dict] = None) -> Optional[pd.DataFrame]:
+        calendar: Optional[Dict] = None,
+        group_results: bool = True) -> Optional[pd.DataFrame]:
     from wta.calendars.calendars import make as make_calendar
 
     click.echo(f'Parallel run: {parallel_run}')
@@ -39,10 +40,12 @@ def identify(
     if len(all_items) == 0:
         return None
 
-    result = __join_per_case_items(all_items, log_ids=log_ids)
-
-    if result is not None:
-        result['wt_total_seconds'] = result[log_ids.wt_total] / np.timedelta64(1, 's')
+    if group_results:
+        result = __join_per_case_items(all_items, log_ids=log_ids)
+        if result is not None:
+            result['wt_total_seconds'] = result[log_ids.wt_total] / np.timedelta64(1, 's')
+    else:
+        result = __create_single_dataframe(all_items)
 
     return result
 
@@ -192,6 +195,14 @@ def __calculate_frequency_and_duration(transitions: pd.DataFrame,
             log_ids.wt_extraneous: [records[log_ids.wt_extraneous].sum()],
         })], ignore_index=True)
     return transition_with_frequency
+
+
+def __create_single_dataframe(items: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    items = list(filter(lambda df: not df.empty, items))
+    if len(items) == 0:
+        return None
+    else:
+        return pd.concat(items).reset_index(drop=True)
 
 
 def __join_per_case_items(items: List[pd.DataFrame], log_ids: Optional[EventLogIDs] = None) -> Optional[pd.DataFrame]:

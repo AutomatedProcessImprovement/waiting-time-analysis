@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, List, Callable, Dict
+from typing import Optional, List, Callable, Dict, Union
 
 import click
 import pandas as pd
@@ -17,7 +17,8 @@ def run(log_path: Path,
         parallel_run=True,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
-        calendar: Optional[Dict] = None) -> TransitionsReport:
+        calendar: Optional[Dict] = None,
+        group_results: bool = True) -> Union[TransitionsReport, Optional[pd.DataFrame]]:
     """
     Entry point for the project. It starts the main analysis which identifies activity transitions, and then uses them
     to analyze different types of waiting time.
@@ -47,11 +48,12 @@ def run(log_path: Path,
 
     parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
     transitions_data = activity_transitions.identify(
-        log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar)
+        log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar, group_results=group_results)
 
-    transitions_report = TransitionsReport(transitions_data, log, log_ids)
-
-    return transitions_report
+    if group_results:
+        return TransitionsReport(transitions_data, log, log_ids)
+    else:
+        return transitions_data
 
 
 @print_section_boundaries('Batch Analysis')
