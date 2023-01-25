@@ -6,7 +6,6 @@ import click
 
 from wta import EventLogIDs
 from wta.main import run
-from wta.transitions_report import TransitionsReport
 
 
 @click.command()
@@ -35,26 +34,36 @@ def main(
         click.echo(f'Waiting Time Analyzer v{__version__}')
         return
 
-    log_ids = __column_mapping(columns_path, columns_json)
+    log_ids = _column_mapping(columns_path, columns_json)
 
-    result: TransitionsReport = run(log_path=log_path, parallel_run=parallel, log_ids=log_ids)
+    _run(log_path, parallel, log_ids, output_dir)
+
+
+def _run(
+        log_path: Path,
+        parallel_run: bool,
+        log_ids: EventLogIDs,
+        output_dir: Path,
+):
+    report = run(log_path, parallel_run, log_ids)
+
+    if report is None:
+        return
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    extension_suffix = '.csv'
+    output_path = output_dir / (log_path.stem + '_transitions_report')
+    csv_path = output_path.with_suffix('.csv')
 
-    if result is not None:
-        output_path = output_dir / (log_path.stem + '_transitions_report')
+    print(f'Saving transitions report to {csv_path}')
+    report.transitions_report.to_csv(csv_path, index=False)
 
-        csv_path = output_path.with_suffix(extension_suffix)
-        print(f'Saving transitions report to {csv_path}')
-        result.transitions_report.to_csv(csv_path, index=False)
+    json_path = output_path.with_suffix('.json')
 
-        json_path = output_path.with_suffix('.json')
-        print(f'Saving transitions report to {json_path}')
-        result.to_json(json_path)
+    print(f'Saving transitions report to {json_path}')
+    report.to_json(json_path)
 
 
-def __column_mapping(columns_path: Optional[Path], columns_json: Optional[str]) -> Optional[EventLogIDs]:
+def _column_mapping(columns_path: Optional[Path], columns_json: Optional[str]) -> Optional[EventLogIDs]:
     log_ids: Optional[EventLogIDs] = None
 
     if columns_path is not None:

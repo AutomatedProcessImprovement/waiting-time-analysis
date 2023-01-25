@@ -4,8 +4,7 @@ from typing import List, Dict, Any
 
 import pandas as pd
 
-from wta import EventLogIDs, get_total_processing_time, CTEImpactAnalysis, calculate_cte_impact, \
-    print_section_boundaries
+from wta import EventLogIDs, get_total_processing_time, CTEImpactAnalysis, calculate_cte_impact
 
 
 class TransitionsReport:
@@ -143,10 +142,12 @@ class TransitionsReport:
                     self.total_pt / (self.total_pt + self.total_wt - resources_report[log_ids.wt_total].sum())
                 cte_impact = calculate_cte_impact(resources_report, self.total_pt, self.total_wt, log_ids=log_ids)
 
+                case_freq = len(resources_report['cases'].apply(lambda x: x.split(',')).explode().unique()) / self.num_cases
+
                 wt_by_resource.append({
                     'source_resource': resources[0],
                     'target_resource': resources[1],
-                    'case_freq': len(resources_report['cases'].values[0].split(',')) / self.num_cases,
+                    'case_freq': case_freq,
                     'total_freq': resources_report['frequency'].sum(),
                     'total_wt': resources_report[log_ids.wt_total].sum(),
                     'batching_wt': resources_report[log_ids.wt_batching].sum(),
@@ -162,10 +163,12 @@ class TransitionsReport:
                 self.total_pt / (self.total_pt + self.total_wt - report[log_ids.wt_total].sum())
             cte_impact = calculate_cte_impact(report, self.total_pt, self.total_wt, log_ids=log_ids)
 
+            case_freq = len(report['cases'].apply(lambda x: x.split(',')).explode().unique()) / self.num_cases
+
             new_report.append({
                 'source_activity': activities[0],
                 'target_activity': activities[1],
-                'case_freq': len(report['cases'].values[0].split(',')) / self.num_cases,
+                'case_freq': case_freq,
                 'total_freq': report['frequency'].sum(),
                 'total_wt': report[log_ids.wt_total].sum(),
                 'batching_wt': report[log_ids.wt_batching].sum(),
