@@ -13,3 +13,6 @@
 [submodule "vendor/batch-processing-discovery"]
 	path = vendor/batch-processing-discovery
 	url = https://github.com/AutomatedProcessImprovement/batch-processing-discovery.git
+[submodule "vendor/pix-utils"]
+	path = vendor/pix-utils
+	url = https://github.com/AutomatedProcessImprovement/pix-utils.git
