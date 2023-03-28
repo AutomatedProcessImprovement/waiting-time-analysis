@@ -25,16 +25,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Install the application
         shell: bash
-        working-directory: /usr/src/app
         run: |
           poetry install
           poetry run wta --help
 
       - name: Test the build
         shell: bash
-        working-directory: /usr/src/app
         run: |
           poetry run pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests
 
