@@ -1,20 +1,55 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
+    paths:
+      - 'Dockerfile'
+      - 'src/wta/**'
+      - '.github/workflows/**'
   pull_request:
     branches:
       - master
+    paths:
+      - 'Dockerfile'
+      - 'src/wta/**'
+      - '.github/workflows/**'
 
 env:
   DOCKERHUB_USERNAME: nokal
   DOCKERHUB_REPO: nokal/waiting-time-analysis
 
 jobs:
-  docker-build:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - name: Install the application
+        shell: bash
+        working-directory: /usr/src/app
+        run: |
+          poetry install
+          poetry run wta --help
+
+      - name: Test the build
+        shell: bash
+        working-directory: /usr/src/app
+        run: |
+          poetry run pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests
+
+      - name: Upload the coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest_coverage.xml
+          path: /usr/src/app/pytest_coverage.xml
+
+
+  docker-build-push:
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      version: ${{ steps.versioning.outputs.version }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -33,60 +68,23 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Get the WTA version
+        id: versioning
+        run: |
+          pip install poetry
+          echo "version=$(poetry version --short)" >> "$GITHUB_OUTPUT"
+
       - name: Build and push to DockerHub
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
+          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}, ${{ env.DOCKERHUB_REPO }}:${{ steps.versioning.outputs.version }}
           file: Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
 
-  test:
-    runs-on: ubuntu-latest
-    needs: [ docker-build ]
-    container: nokal/waiting-time-analysis:latest
-    steps:
-      - name: Smoke Test
-        shell: bash
-        working-directory: /usr/src/app
+      - name: Assign a git version tag and push it
         run: |
-          source venv/bin/activate
-          wta --help
+          git tag ${{ steps.versioning.outputs.version }}
+          git push --tags                
 
-      - name: Test the build
-        shell: bash
-        working-directory: /usr/src/app
-        run: |
-          source venv/bin/activate
-          pytest -v --durations=0 --cov-report xml:pytest_coverage.xml --cov src/wta/ tests
-
-#      - name: Make LCOV report
-#        shell: bash
-#        working-directory: /usr/src/app
-#        run: |
-#          source venv/bin/activate
-#          coverage lcov
-#
-#      - name: Coveralls Upload
-#        uses: coverallsapp/github-action@master
-#        with:
-#          github-token: ${{ secrets.GITHUB_TOKEN }}
-#          path-to-lcov: /usr/src/app/coverage.lcov
-
-      - name: Upload the coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest_coverage.xml
-          path: /usr/src/app/pytest_coverage.xml
-#
-#      - name: Upload the coverage report
-#        uses: actions/upload-artifact@v3
-#        with:
-#          name: pytest-coverage.log
-#          path: /usr/src/app/pytest-coverage.log
-#
-#      - name: Test Coverage
-#        uses: MishaKav/pytest-coverage-comment@main
-#        with:
-#          junitxml-path: /usr/src/app/pytest_coverage.xml
