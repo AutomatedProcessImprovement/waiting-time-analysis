@@ -33,6 +33,7 @@ jobs:
       - name: Install the application
         shell: bash
         run: |
+          pip install poetry
           poetry install
           poetry run wta --help
 
