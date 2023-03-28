@@ -14,6 +14,6 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Tallinn /etc/localtime
 WORKDIR /usr/src/app
 ADD . /usr/src/app
 
-RUN bash install_python.sh
+RUN bash install.sh
 
 CMD ["bash"]

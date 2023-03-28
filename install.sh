@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-source ./install_python.sh
+pip install poetry
+poetry install

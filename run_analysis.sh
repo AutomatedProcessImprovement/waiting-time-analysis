@@ -3,5 +3,4 @@
 EVENT_LOG=$1
 OUTPUT_DIR=$2
 
-source venv/bin/activate
-wta --log_path "$EVENT_LOG" --output_dir "$OUTPUT_DIR" >> "$OUTPUT_DIR"/out.log
+poetry run wta --log_path "$EVENT_LOG" --output_dir "$OUTPUT_DIR" >> "$OUTPUT_DIR"/out.log
