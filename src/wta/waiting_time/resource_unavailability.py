@@ -122,17 +122,17 @@ def detect_unavailability_intervals(
             if len(daily_working_intervals) > 0:
                 # Search for an interval containing the current instant
                 for working_interval in daily_working_intervals:
-                    start = working_interval.left_time_to_time()
-                    end = working_interval.right_time_to_time()
+                    start = working_interval._left_time
+                    end = working_interval._right_time
                     if start <= current_instant.time() < end:
                         next_instant = pd.Timestamp.combine(current_instant.date(), end).tz_localize(current_instant.tz)
                 # If not contained in an interval
                 if next_instant is None:
                     # Get intervals' start happening after it
                     starts_after = [
-                        working_interval.left_time_to_time()
+                        working_interval._left_time
                         for working_interval in daily_working_intervals
-                        if working_interval.left_time_to_time() > current_instant.time()
+                        if working_interval._left_time > current_instant.time()
                     ]
                     if len(starts_after) > 0:
                         next_instant = pd.Timestamp.combine(current_instant.date(), min(starts_after)).tz_localize(current_instant.tz)
