@@ -256,9 +256,12 @@ def get_total_processing_time(log: pd.DataFrame, log_ids: Optional[EventLogIDs] 
 def compute_batch_activation_times(event_log: pd.DataFrame, log_ids: EventLogIDs) -> pd.DataFrame:
     event_log[log_ids.batch_instance_enabled] = pd.NaT
     batch_events = event_log[~pd.isna(event_log[log_ids.batch_id])]
-    for (batch_key, batch_instance) in batch_events.groupby([log_ids.batch_id]):
+    for (batch_key,), batch_instance in batch_events.groupby([log_ids.batch_id]):
+        mask = event_log[log_ids.batch_id].eq(batch_key)
         event_log.loc[
-            event_log[log_ids.batch_id] == batch_key,
+            mask,
             log_ids.batch_instance_enabled
         ] = batch_instance[log_ids.enabled_time].max()
     return event_log
+
+

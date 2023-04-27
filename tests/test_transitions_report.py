@@ -63,7 +63,7 @@ def test_transitions_report(assets_path, test_data):
         case_wt = case_log[log_ids.wt_total].sum()
         case_cte = case_pt / (case_pt + case_wt)
 
-        per_case_wt = per_case_wt.append({
+        per_case_wt = per_case_wt._append({
             case_column: case_id,
             wt_total_column: case_wt.total_seconds(),
             pt_total_column: case_pt.total_seconds(),
