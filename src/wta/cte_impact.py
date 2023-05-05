@@ -45,26 +45,18 @@ def calculate_cte_impact(
     """Calculates impact of waiting time on cycle time efficiency."""
     log_ids = log_ids_non_nil(log_ids)
 
-    # NOTE: all times should be in seconds, not pd.Timedelta objects
-    total_wt_batching = report[log_ids.wt_batching].sum()
-    total_wt_prioritization = report[log_ids.wt_prioritization].sum()
-    total_wt_contention = report[log_ids.wt_contention].sum()
-    total_wt_unavailability = report[log_ids.wt_unavailability].sum()
-    total_wt_extraneous = report[log_ids.wt_extraneous].sum()
+    total_wt = report[[log_ids.wt_batching, log_ids.wt_prioritization, log_ids.wt_contention, log_ids.wt_unavailability, log_ids.wt_extraneous]].sum()
 
-    batching_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_batching)
-    contention_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_contention)
-    prioritization_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_prioritization)
-    unavailability_impact = total_processing_time / (
-            total_processing_time + total_waiting_time - total_wt_unavailability)
-    extraneous_impact = total_processing_time / (total_processing_time + total_waiting_time - total_wt_extraneous)
+    # Precompute the sum of total_processing_time and total_waiting_time
+    total_time_sum = total_processing_time + total_waiting_time
+
+    impact = total_processing_time / (total_time_sum - total_wt)
 
     result = CTEImpactAnalysis(
-        batching_impact=batching_impact,
-        contention_impact=contention_impact,
-        prioritization_impact=prioritization_impact,
-        unavailability_impact=unavailability_impact,
-        extraneous_impact=extraneous_impact)
+        batching_impact=impact[log_ids.wt_batching],
+        prioritization_impact=impact[log_ids.wt_prioritization],
+        contention_impact=impact[log_ids.wt_contention],
+        unavailability_impact=impact[log_ids.wt_unavailability],
+        extraneous_impact=impact[log_ids.wt_extraneous])
 
     return result
