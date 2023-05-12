@@ -1,6 +1,6 @@
 # Waiting Time Analysis of Activity Transitions
 
-![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/main.yml/badge.svg)
+![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-analysis/actions/workflows/build.yml/badge.svg)
 ![version](https://img.shields.io/github/v/tag/AutomatedProcessImprovement/waiting-time-analysis)
 
 Implementation of the technique presented in the paper "*Why am I Waiting? Data-Driven Analysis of Waiting Times in Business Processes*", by
