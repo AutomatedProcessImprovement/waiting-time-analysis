@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     outputs:
-      version: ${{ steps.versioning.outputs.version }}
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -73,7 +73,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Get version
-        id: versioning
+        id: get_version
         run: |
           pip install poetry
           echo "version=$(poetry version --short)" >> "$GITHUB_OUTPUT"
@@ -83,7 +83,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}, ${{ env.DOCKERHUB_REPO }}:${{ steps.versioning.outputs.version }}
+          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}, ${{ env.DOCKERHUB_REPO }}:${{ steps.get_version.outputs.version }}
           file: Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
@@ -101,8 +101,8 @@ jobs:
 
       - name: Assign a git version tag and push it
         run: |
-          git tag ${{ steps.versioning.outputs.version }}
-          git push --tags                
+          git tag ${{ steps.get_version.outputs.version }}
+          git push --tags
         if: github.ref == 'refs/heads/master'
 
       - name: Create release
