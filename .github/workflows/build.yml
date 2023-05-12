@@ -72,12 +72,12 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Get the WTA version
+      - name: Get version
         id: versioning
         run: |
           pip install poetry
           echo "version=$(poetry version --short)" >> "$GITHUB_OUTPUT"
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
 
       - name: Build and push to DockerHub
         uses: docker/build-push-action@v2
@@ -87,10 +87,29 @@ jobs:
           file: Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
+
+      - name: Generate changelog
+        run: |
+          echo "# Changelog" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "\`\`\`" >> CHANGELOG.md
+          git log --pretty=format:"%h - %s (%an)" $(git describe --tags --abbrev=0)..HEAD >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "\`\`\`" >> CHANGELOG.md
+        if: github.ref == 'refs/heads/master'
 
       - name: Assign a git version tag and push it
         run: |
           git tag ${{ steps.versioning.outputs.version }}
           git push --tags                
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*
+          tag_name: ${{ steps.get_version.outputs.version }}
+          body_path: CHANGELOG.md
+        if: github.ref == 'refs/heads/master'
