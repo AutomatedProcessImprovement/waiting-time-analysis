@@ -22,7 +22,7 @@ pandas = "2.0.1"
 pytest = "^7.1.1"
 tqdm = "^4.63.0"
 pendulum = "^2.1.2"
-prosimos = { git = "https://github.com/AutomatedProcessImprovement/Prosimos.git", branch = "main" }
+diffresbp-simulator = { git = "https://github.com/AutomatedProcessImprovement/Prosimos.git", rev = "ab4394c066353ecca57dc5005e0f29ef34458c57" }
 batch-processing-discovery = { git = "https://github.com/AutomatedProcessImprovement/batch-processing-discovery.git", branch = "main" }
 start-time-estimator = "^1.10.4"
 
