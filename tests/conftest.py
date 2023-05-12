@@ -5,8 +5,8 @@ from typing import List
 import pandas as pd
 import pytest
 
-from estimate_start_times.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
-    HeuristicsThresholds, EventLogIDs
+from start_time_estimator.config import Configuration, ConcurrencyOracleType, ResourceAvailabilityType, \
+    ConcurrencyThresholds, EventLogIDs
 from wta.helpers import START_TIMESTAMP_KEY, ENABLED_TIMESTAMP_KEY, WAITING_TIME_TOTAL_KEY, \
     read_csv, add_enabled_timestamp
 
@@ -64,7 +64,7 @@ def config() -> Configuration:
         ),
         concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
         resource_availability_type=ResourceAvailabilityType.SIMPLE,
-        heuristics_thresholds=HeuristicsThresholds(df=0.9, l2l=0.9)
+        concurrency_thresholds=ConcurrencyThresholds(df=0.9, l2l=0.9)
     )
     return config
 
