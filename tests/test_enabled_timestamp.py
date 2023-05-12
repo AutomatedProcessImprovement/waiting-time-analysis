@@ -1,4 +1,4 @@
-from estimate_start_times.concurrency_oracle import HeuristicsConcurrencyOracle
+from start_time_estimator.concurrency_oracle import HeuristicsConcurrencyOracle
 
 
 def test_enabled_timestamp_calculation_purchasing_example(event_log_parametrized, config):

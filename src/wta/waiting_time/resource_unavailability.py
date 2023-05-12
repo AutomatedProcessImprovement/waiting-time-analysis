@@ -91,9 +91,10 @@ def detect_unavailability_intervals(
         log_calendar: dict,
         differentiated=True,
         log_ids: Optional[EventLogIDs] = None) -> List[Interval]:
-    log_ids = log_ids_non_nil(log_ids)
 
+    log_ids = log_ids_non_nil(log_ids)
     event = log.loc[event_index]
+
     if isinstance(event, pd.Series):
         event = event.to_frame().T
 
@@ -104,7 +105,6 @@ def detect_unavailability_intervals(
 
     start_time = pd.Timestamp(event[log_ids.start_time].values[0])
     enabled_time = pd.Timestamp(event[log_ids.enabled_time].values[0])
-    # TODO: do tz localization somewhere earlier (preprocessing module) on the whole log
     start_time = __ensure_timestamp_tz(start_time, enabled_time.tz)
     enabled_time = __ensure_timestamp_tz(enabled_time, start_time.tz)
 
@@ -113,41 +113,42 @@ def detect_unavailability_intervals(
         overall_work_intervals = calendars.resource_working_hours_as_intervals(resource, log_calendar)
         current_instant = enabled_time
         while current_instant < start_time:
-            next_instant = None
             daily_working_intervals = [
                 interval
                 for interval in overall_work_intervals
                 if current_instant.weekday() == interval.left_day.value
             ]
-            if len(daily_working_intervals) > 0:
-                # Search for an interval containing the current instant
-                for working_interval in daily_working_intervals:
-                    start = working_interval.left_time_to_time()
-                    end = working_interval.right_time_to_time()
-                    if start <= current_instant.time() < end:
-                        next_instant = pd.Timestamp.combine(current_instant.date(), end).tz_localize(current_instant.tz)
-                # If not contained in an interval
-                if next_instant is None:
-                    # Get intervals' start happening after it
-                    starts_after = [
-                        working_interval.left_time_to_time()
-                        for working_interval in daily_working_intervals
-                        if working_interval.left_time_to_time() > current_instant.time()
-                    ]
-                    if len(starts_after) > 0:
-                        next_instant = pd.Timestamp.combine(current_instant.date(), min(starts_after)).tz_localize(current_instant.tz)
-                        non_working_intervals += [pd.Interval(current_instant, min(next_instant, start_time))]
+
+            next_instant = None
+            for working_interval in daily_working_intervals:
+                start = working_interval._left_time
+                end = working_interval._right_time
+                if start <= current_instant.time() < end:
+                    next_instant = pd.Timestamp.combine(current_instant.date(), end).tz_localize(current_instant.tz)
+                    break
+
             if next_instant is None:
-                # Non working periods on this week day, or no working periods happening after current instant,
-                # thus, add non-working interval until end of day
+                starts_after = [
+                    working_interval._left_time
+                    for working_interval in daily_working_intervals
+                    if working_interval._left_time > current_instant.time()
+                ]
+                if starts_after:
+                    min_start_after = min(starts_after)
+                    next_instant = pd.Timestamp.combine(current_instant.date(), min_start_after).tz_localize(current_instant.tz)
+                    non_working_intervals.append(pd.Interval(current_instant, min(next_instant, start_time)))
+
+            if next_instant is None:
                 next_instant = pd.Timestamp.combine(
                     current_instant.date() + pd.Timedelta(days=1),
                     datetime.time.fromisoformat("00:00:00.000000")
                 ).tz_localize(current_instant.tz)
-                non_working_intervals += [pd.Interval(current_instant, min(next_instant, start_time))]
+                non_working_intervals.append(pd.Interval(current_instant, min(next_instant, start_time)))
+
             current_instant = next_instant
 
     return non_working_intervals
+
 
 
 def __ensure_timestamp_tz(timestamp: pd.Timestamp, tz: Optional[str] = None):
