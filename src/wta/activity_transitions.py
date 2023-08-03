@@ -107,7 +107,6 @@ def __multiprocess_run(log, log_ids, calendar, parallel_activities):
             'destination_activity',
             'destination_resource',
             'case_id',
-            'transition_type',
             'wt_total',
             'wt_contention',
             'wt_batching',

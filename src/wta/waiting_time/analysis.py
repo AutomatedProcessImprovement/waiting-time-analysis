@@ -63,7 +63,6 @@ def run(case: pd.DataFrame,
             wt_unavailability = pd.Timedelta(0)
             wt_extraneous = pd.Timedelta(0)
 
-        transition_type = 'transition'
 
         # appending the handoff data
         transition = pd.DataFrame({
@@ -73,7 +72,6 @@ def run(case: pd.DataFrame,
             'destination_resource': [destination[log_ids.resource]],
             'start_time': [source[log_ids.start_time]],
             'end_time': [source[log_ids.end_time]],
-            'transition_type': [transition_type],
             log_ids.wt_total: [wt_total],
             log_ids.wt_batching: [wt_batching],
             log_ids.wt_prioritization: [wt_prioritization],
