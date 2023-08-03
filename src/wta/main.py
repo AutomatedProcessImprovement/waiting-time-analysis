@@ -50,10 +50,12 @@ def run(log_path: Path,
     transitions_data = activity_transitions.identify(
         log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar, group_results=group_results)
 
-    if group_results:
-        return TransitionsReport(transitions_data, log, log_ids)
-    else:
-        return transitions_data
+    # if group_results:
+    #     return TransitionsReport(transitions_data, log, log_ids)
+    # else:
+    #     return transitions_data
+
+    return transitions_data
 
 
 @print_section_boundaries('Batch Analysis')
