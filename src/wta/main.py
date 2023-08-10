@@ -47,13 +47,8 @@ def run(log_path: Path,
     log[log_ids.wt_total] = log[log_ids.start_time] - log[log_ids.enabled_time]
 
     parallel_activities = parallel_activities_with_heuristic_oracle(log, log_ids=log_ids)
-    transitions_data = activity_transitions.identify(
-        log, parallel_activities, parallel_run, log_ids=log_ids, calendar=calendar, group_results=group_results)
-
-    # if group_results:
-    #     return TransitionsReport(transitions_data, log, log_ids)
-    # else:
-    #     return transitions_data
+    transitions_data = activity_transitions.identify(log, parallel_activities, parallel_run, log_ids=log_ids,
+                                                     calendar=calendar)
 
     return transitions_data
 
