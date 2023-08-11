@@ -76,7 +76,7 @@ def submit_task(executor, case, parallel_activities, case_id, calendar, log, log
 
 
 def concatenate_transitions_if_exists(results_transitions):
-    return convert_time_columns_to_seconds(pd.concat(results_transitions, ignore_index=True)) if results_transitions else None
+    return pd.concat(results_transitions, ignore_index=True) if results_transitions else None
 
 
 def identify_transitions_and_report(case, parallel_activities, case_id, log_calendar, log, log_ids):
@@ -106,24 +106,3 @@ def mark_activity_transitions(case, parallel_activities, log_ids):
             else:
                 case.at[index, TRANSITION_COLUMN_KEY] = previous_event_index
                 non_concurrent_previous_event_found = True
-
-
-def convert_time_columns_to_seconds(df: pd.DataFrame):
-    df[CONVERT_COLUMNS] = df[CONVERT_COLUMNS].applymap(time_to_seconds)
-    return df[ORDERED_COLUMNS] if ORDERED_COLUMNS else df
-
-
-def time_to_seconds(t: Union[pd.Timedelta, float, str, None]) -> Union[float, None]:
-    if pd.isnull(t):
-        return None
-    elif isinstance(t, pd.Timedelta):
-        return t.total_seconds()
-    else:
-        try:
-            time_parts = str(t).split(' ')[-1].split(':')
-            return int(time_parts[0]) * 3600 + int(time_parts[1]) * 60 + int(time_parts[2])
-        except ValueError:
-            try:
-                return float(t)
-            except ValueError:
-                return None
