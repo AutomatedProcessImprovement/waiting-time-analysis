@@ -40,7 +40,16 @@ def identify(log: pd.DataFrame, parallel_activities: Dict[str, set], parallel_ru
     log_calendar = make_calendar_if_none(log, log_ids, calendar)
     run_func = __multiprocess_run if parallel_run else __sequential_run
     all_items = run_func(log, log_ids, log_calendar, parallel_activities)
-    return None if len(all_items) == 0 else all_items
+    return None if len(all_items) == 0 else process_all_items(all_items)
+
+
+def process_all_items(all_items: pd.DataFrame) -> pd.DataFrame:
+    # Convert time columns to seconds
+    columns_to_convert = [col for col in CONVERT_COLUMNS if col in all_items.columns]
+    all_items[columns_to_convert] = all_items[columns_to_convert].applymap(lambda x: pd.to_timedelta(x).total_seconds())
+
+    # Return the dataframe in the order of ORDERED_COLUMNS
+    return all_items[ORDERED_COLUMNS]
 
 
 def make_calendar_if_none(log, log_ids, calendar):
