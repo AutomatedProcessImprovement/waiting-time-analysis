@@ -237,6 +237,7 @@ def assert_report(aggregated_report, expected_data, log_ids):
         ]
         for col in wt_columns:
             aggregated_report[col] = pd.to_timedelta(aggregated_report[col]).dt.total_seconds()
+            expected_data[col] = pd.to_timedelta(expected_data[col]).dt.total_seconds()
         aggregated_report['frequency'] = aggregated_report['frequency'].astype(float)
         expected_data['frequency'] = expected_data['frequency'].astype(float)
         assert_frame_equal(aggregated_report[columns_to_compare], expected_data[columns_to_compare])
