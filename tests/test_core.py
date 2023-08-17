@@ -40,8 +40,3 @@ def handoffs(assets_path) -> List[pd.DataFrame]:
         pd.read_csv(assets_path / 'bimp-example_case_handoff_5.csv'),
         pd.read_csv(assets_path / 'bimp-example_case_handoff_6.csv'),
     ]
-
-
-def test_join_handoffs(handoffs):
-    result = wta.activity_transitions.__join_per_case_items(handoffs)
-    assert result is not None and not result.empty

@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 
 import wta.helpers
 from wta.main import run
@@ -181,62 +182,82 @@ def __generate_calendars(log_name: str):
         raise Exception("Unknown calendar time: {}".format(calendar_time))
 
 
-@pytest.mark.icpm
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    'test_data', icpm_data,
-    ids=map(
-        lambda x: f"{x['log_name']}, parallel={x['parallel_run']}, batch_size={x['batch_size']}",
-        icpm_data))
-def test_handoffs_for_icpm_conference(assets_path, test_data):
+def extract_configuration(assets_path, test_data):
     log_path = assets_path / 'icpm/handoff-logs' / test_data['log_name']
     parallel = test_data['parallel_run']
-    output_dir = assets_path / 'icpm/handoff-logs'
-
     log_ids = wta.EventLogIDs()
     log_ids.start_time = 'start_time'
     log_ids.end_time = 'end_time'
     log_ids.case = 'case_id'
     log_ids.activity = 'Activity'
     log_ids.resource = 'Resource'
-
     calendar = test_data['calendar'] if 'calendar' in test_data else None
+    return run(log_path, parallel, log_ids=log_ids, calendar=calendar), log_ids
 
-    report: TransitionsReport = run(log_path, parallel, log_ids=log_ids, calendar=calendar)
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    extension_suffix = '.csv'
+def aggregate_report(report, log_ids):
+    report['frequency'] = 1
+    return report.groupby(['source_activity', 'source_resource',
+                           'destination_activity', 'destination_resource']).agg(
+        frequency=('frequency', 'size'),
+        wt_total=(log_ids.wt_total, 'sum'),
+        wt_batching=(log_ids.wt_batching, 'sum'),
+        wt_prioritization=(log_ids.wt_prioritization, 'sum'),
+        wt_contention=(log_ids.wt_contention, 'sum'),
+        wt_unavailability=(log_ids.wt_unavailability, 'sum'),
+        wt_extraneous=(log_ids.wt_extraneous, 'sum')
+    ).reset_index()
 
-    # test case expected values if available
+
+def rename_columns(aggregated_report):
+    aggregated_report.rename(columns={'destination_activity': 'target_activity', 'destination_resource': 'target_resource'}, inplace=True)
+    return aggregated_report
+
+
+def load_expected_data(assets_path, test_data, log_ids):
     expected_path = (assets_path / 'icpm/handoff-logs' / test_data['expected']) if 'expected' in test_data else None
-    expected_data = wta.helpers.read_csv(expected_path) if expected_path else None
+    if expected_path:
+        expected_data = wta.helpers.read_csv(expected_path)
+        # Convert to seconds if needed
+        for col in [log_ids.wt_total, log_ids.wt_batching, log_ids.wt_contention, log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous]:
+            expected_data[col] = pd.to_timedelta(expected_data[col]).dt.total_seconds()
+        return expected_data
 
-    # assert
+
+def assert_report(aggregated_report, expected_data, log_ids):
     if expected_data is not None:
-        expected_data[log_ids.wt_total] = pd.to_timedelta(expected_data[log_ids.wt_total]).dt.total_seconds()
-        expected_data[log_ids.wt_batching] = pd.to_timedelta(expected_data[log_ids.wt_batching]).dt.total_seconds()
-        expected_data[log_ids.wt_contention] = pd.to_timedelta(expected_data[log_ids.wt_contention]).dt.total_seconds()
-        expected_data[log_ids.wt_prioritization] = pd.to_timedelta(expected_data[log_ids.wt_prioritization]).dt.total_seconds()
-        expected_data[log_ids.wt_unavailability] = pd.to_timedelta(expected_data[log_ids.wt_unavailability]).dt.total_seconds()
-        expected_data[log_ids.wt_extraneous] = pd.to_timedelta(expected_data[log_ids.wt_extraneous]).dt.total_seconds()
-
-        report.transitions_report['cases'] = report.transitions_report['cases'].astype(object)
-        report.transitions_report['cases'] = expected_data['cases'].astype(object)
-
         columns_to_compare = [
             'source_activity', 'source_resource', 'target_activity', 'target_resource', 'frequency',
             log_ids.wt_total, log_ids.wt_batching, log_ids.wt_contention,
             log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous
         ]
+        wt_columns = [
+            log_ids.wt_total, log_ids.wt_batching, log_ids.wt_contention,
+            log_ids.wt_prioritization, log_ids.wt_unavailability, log_ids.wt_extraneous
+        ]
+        for col in wt_columns:
+            aggregated_report[col] = pd.to_timedelta(aggregated_report[col]).dt.total_seconds()
+            expected_data[col] = pd.to_timedelta(expected_data[col]).dt.total_seconds()
+        aggregated_report['frequency'] = aggregated_report['frequency'].astype(float)
+        expected_data['frequency'] = expected_data['frequency'].astype(float)
+        assert_frame_equal(aggregated_report[columns_to_compare], expected_data[columns_to_compare])
 
-        assert report.transitions_report[columns_to_compare].equals(expected_data[columns_to_compare])
 
-    # save handoff results
-    if test_data.get('save_report'):
-        if report is not None:
-            handoff_output_path = output_dir / (log_path.stem + '_handoff')
-            handoff_csv_path = handoff_output_path.with_suffix(extension_suffix)
-            print(f'Saving handoff report to {handoff_csv_path}')
-            report.transitions_report.to_csv(handoff_csv_path, index=False)
-        else:
-            print('No handoffs found')
+def save_report(aggregated_report, assets_path, log_path, test_data):
+    if test_data.get('save_report') and aggregated_report is not None:
+        output_dir = assets_path / 'icpm/handoff-logs'
+        handoff_output_path = output_dir / (log_path.stem + '_handoff')
+        handoff_csv_path = handoff_output_path.with_suffix('.csv')
+        aggregated_report.to_csv(handoff_csv_path, index=False)
+
+
+@pytest.mark.icpm
+@pytest.mark.integration
+@pytest.mark.parametrize('test_data', icpm_data, ids=map(lambda x: f"{x['log_name']}, parallel={x['parallel_run']}, batch_size={x['batch_size']}", icpm_data))
+def test_handoffs_for_icpm_conference(assets_path, test_data):
+    report, log_ids = extract_configuration(assets_path, test_data)
+    aggregated_report = aggregate_report(report, log_ids)
+    aggregated_report = rename_columns(aggregated_report)
+    expected_data = load_expected_data(assets_path, test_data, log_ids)
+    assert_report(aggregated_report, expected_data, log_ids)
+    save_report(aggregated_report, assets_path, test_data['log_name'], test_data)

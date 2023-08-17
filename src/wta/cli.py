@@ -55,7 +55,7 @@ def _run(
     csv_path = output_path.with_suffix('.csv')
 
     print(f'Saving transitions report to {csv_path}')
-    report.transitions_report.to_csv(csv_path, index=False)
+    report.to_csv(csv_path, index=False)
 
     json_path = output_path.with_suffix('.json')
 
