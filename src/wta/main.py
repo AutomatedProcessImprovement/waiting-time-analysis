@@ -18,6 +18,7 @@ def run(log_path: Path,
         log_ids: Optional[EventLogIDs] = None,
         preprocessing_funcs: Optional[List[Callable]] = None,
         calendar: Optional[Dict] = None,
+        log: Optional[pd.DataFrame] = None,
         group_results: bool = True) -> Union[TransitionsReport, Optional[pd.DataFrame]]:
     """
     Entry point for the project. It starts the main analysis which identifies activity transitions, and then uses them
@@ -25,7 +26,8 @@ def run(log_path: Path,
     """
     log_ids = log_ids_non_nil(log_ids)
 
-    log = read_csv(log_path, log_ids=log_ids)
+    if log is None:
+        log = read_csv(log_path, log_ids=log_ids)
 
     # preprocess event log
     if preprocessing_funcs is not None:
